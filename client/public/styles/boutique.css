@@ -1,0 +1,27 @@
+[data-theme="boutique"] {
+  --bg-primary:#fff; --bg-secondary:#f8f9fa; --bg-tertiary:#e9ecef;
+  --text-primary:#1a1a1a; --text-secondary:#495057; --text-muted:#6c757d;
+  --border-primary:#dee2e6; --border-secondary:#e9ecef; --border-solid:#495057;
+  --shadow-glow:0 2px 8px rgba(0,0,0,.1); --shadow-button:0 2px 4px rgba(0,0,0,.1);
+  --accent-primary:#0d6efd;
+  --font-primary:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-size-base:15px; --letter-spacing:0; --line-height:1.6; --transition-speed:.2s;
+}
+[data-theme="boutique"] .metrics-container,
+[data-theme="boutique"] .metrics-panel {
+  display: none !important;
+}
+[data-theme="boutique"] * { animation:fadeIn .3s ease-out; }
+[data-theme="boutique"] .scanline { display:none; }
+[data-theme="boutique"] .ascii-header,[data-theme="boutique"] .ascii-footer,[data-theme="boutique"] .app-footer { display:none; }
+[data-theme="boutique"] .control-panel { background:var(--bg-secondary); box-shadow:var(--shadow-glow); }
+[data-theme="boutique"] .theme-button { border-radius:6px; border-color:var(--border-primary); }
+[data-theme="boutique"] .theme-button.active { background:var(--accent-primary); border-color:var(--accent-primary); color:#fff; }
+[data-theme="boutique"] .data-control-item { background:#fff; padding:20px; border-radius:12px; box-shadow:var(--shadow-glow); }
+[data-theme="boutique"] .main-content { max-width:1400px; margin:0 auto; }
+[data-theme="boutique"] .filter-panel { background:#fff; border:none; border-radius:12px; box-shadow:var(--shadow-glow); }
+[data-theme="boutique"] .filter-title { font-size:14px; font-weight:600; }
+[data-theme="boutique"] .filter-select { background:var(--bg-secondary); border:1px solid var(--border-primary); border-radius:6px; padding:12px; font-size:14px; }
+[data-theme="boutique"] .example-card { background:#fff; border-radius:12px; box-shadow:var(--shadow-glow); padding:20px; }
+[data-theme="boutique"] .code-block { background:#f8f9fa; border-radius:6px; padding:16px; font-size:13px; }
+[data-theme="boutique"] .no-results { background:#fff; border-radius:12px; box-shadow:var(--shadow-glow); opacity:1; color:var(--text-muted); }
