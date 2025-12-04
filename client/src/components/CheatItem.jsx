@@ -1,18 +1,30 @@
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useState } from "react";
 
 export function CheatItem({ cheat, language, category }) {
   const navigate = useNavigate();
   const { deleteCheat } = useAuth();
+  const [copied, setCopied] = useState(false);
 
   const handleEdit = () => {
-    navigate(`/cheats/${cheat.id}/edit`); s
+    navigate(`/cheats/${cheat.id}/edit`);
   };
 
   const handleDelete = async () => {
     if (window.confirm(`Delete "${cheat.title}"?`)) {  
       await deleteCheat(cheat.id);
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(cheat.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
     }
   };
 
@@ -41,7 +53,17 @@ export function CheatItem({ cheat, language, category }) {
       </div>
 
       {/* 3. CODE SCREEN */}
-      <div className="terminal-screen">
+      <div className="terminal-screen" onClick={handleCopy}>
+        <div className="source-view-label">
+          {copied ? (
+            <>
+              <Check size={10} />
+              COPIED
+            </>
+          ) : (
+            'SOURCE_VIEW'
+          )}
+        </div>
         <pre><code>{cheat.code}</code></pre>
       </div>
 

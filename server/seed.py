@@ -17,78 +17,61 @@ with app.app_context():
     db.session.commit()
     print(f"✅ Created user: {user.email}")
     
-    # Create languages
-    python = Language(name="Python")
-    javascript = Language(name="JavaScript")
-    sql = Language(name="Sql")
-    terminal = Language(name="Terminal")
-    json = Language(name="Json")
-    regex = Language(name="Regex")
-    css = Language(name="Css")
-    html = Language(name="Html")
-    xml = Language(name="Xml")
+    # Create languages (alphabetized)
+    languages = [
+        Language(name="Css"),
+        Language(name="Html"),
+        Language(name="JavaScript"),
+        Language(name="Json"),
+        Language(name="Python"),
+        Language(name="React"),
+        Language(name="Regex"),
+        Language(name="Sql"),
+        Language(name="Terminal"),
+        Language(name="Xml"),
+    ]
     
-    db.session.add_all([python, javascript, sql, terminal, json, regex, css, html, xml])
+    db.session.add_all(languages)
     db.session.commit()
     print(f"✅ Created {Language.query.count()} languages")
     
-    # Create categories
-    functions = Category(name="Functions")
-    loops = Category(name="Loops")
-    methods = Category(name="Methods")
-    startup = Category(name="Startup")
-    images = Category(name="Images")
-    curl = Category(name="Curl")
-    manupulation = Category(name="Manipulation")
-    classes = Category(name="Classes")
-    arrays = Category(name="Arrays")
+    # Create categories (alphabetized)
+    categories = [
+        Category(name="Arrays"),
+        Category(name="Classes"),
+        Category(name="Curl"),
+        Category(name="Functions"),
+        Category(name="Images"),
+        Category(name="Loops"),
+        Category(name="Manipulation"),
+        Category(name="Methods"),
+        Category(name="Startup"),
+    ]
     
-    db.session.add_all([functions, loops, classes, methods, startup, images, curl, manupulation, arrays])
+    db.session.add_all(categories)
     db.session.commit()
     print(f"✅ Created {Category.query.count()} categories")
     
-    # Create some cheats
-    cheats = [
-        Cheat(
-            title="List Comprehension",
-            code="[x for x in range(10)]",
-            user_id=user.id,
-            language_id=python.id,
-            category_id=loops.id
-        ),
-        Cheat(
-            title="Dict Comprehension",
-            code="{k: v for k, v in items()}",
-            user_id=user.id,
-            language_id=python.id,
-            category_id=loops.id
-        ),
-        Cheat(
-            title="Lambda Function",
-            code="lambda x: x * 2",
-            user_id=user.id,
-            language_id=python.id,
-            category_id=functions.id
-        ),
-        Cheat(
-            title="Arrow Function",
-            code="const add = (a, b) => a + b",
-            user_id=user.id,
-            language_id=javascript.id,
-            category_id=functions.id
-        ),
-        Cheat(
-            title="Map Array",
-            code="array.map(item => item * 2)",
-            user_id=user.id,
-            language_id=javascript.id,
-            category_id=arrays.id
-        )
-    ]
+    # Get Terminal language and Startup category
+    terminal = Language.query.filter_by(name="Terminal").first()
+    startup = Category.query.filter_by(name="Startup").first()
     
-    db.session.add_all(cheats)
+    # Create single cheat
+    cheat = Cheat(
+        title="npm create vite@latest client -- --template react",
+        code="""npm create vite@latest client -- --template react
+cd client
+npm install
+npm install react-router-dom lucide-react""",
+        notes="Executed from existing client folder with router and lucide",
+        user_id=user.id,
+        language_id=terminal.id,
+        category_id=startup.id
+    )
+    
+    db.session.add(cheat)
     db.session.commit()
-    print(f"✅ Created {Cheat.query.count()} cheats")
+    print(f"✅ Created {Cheat.query.count()} cheat")
     
     print("\n🎉 Seed complete!")
     print(f"   User: {user.email} / password: 1111")
