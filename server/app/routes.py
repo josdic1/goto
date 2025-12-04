@@ -64,6 +64,8 @@ class CheckSession(Resource):
                 'id': cheat.id,
                 'title': cheat.title,
                 'code': cheat.code,
+                'language_id': cheat.language_id,  # ✅ ADD THIS
+                'category_id': cheat.category_id,  # ✅ ADD THIS
                 'category': {'id': cheat.category.id, 'name': cheat.category.name}
             })
         
@@ -81,6 +83,8 @@ class CheckSession(Resource):
                 'id': cheat.id,
                 'title': cheat.title,
                 'code': cheat.code,
+                'language_id': cheat.language_id,  # ✅ ADD THIS
+                'category_id': cheat.category_id,  # ✅ ADD THIS
                 'language': {'id': cheat.language.id, 'name': cheat.language.name}
             })
         
@@ -90,7 +94,6 @@ class CheckSession(Resource):
             'languages': list(languages.values()),
             'categories': list(categories.values())
         }
-
 
 # ================ CHEAT RESOURCES ================ #
 
@@ -120,7 +123,7 @@ class CheatList(Resource):
             'category': {'id': c.category.id, 'name': c.category.name}
         } for c in cheats], 200
     
-    def post(self):
+    def post(self): 
         user_id = session.get('user_id')
         if not user_id:
             return {'error': 'Not logged in'}, 401
@@ -137,7 +140,16 @@ class CheatList(Resource):
         db.session.add(cheat)
         db.session.commit()
         
-        return {'id': cheat.id, 'title': cheat.title, 'code': cheat.code}, 201
+        # Return COMPLETE data
+        return {
+            'id': cheat.id,
+            'title': cheat.title,
+            'code': cheat.code,
+            'language_id': cheat.language_id,
+            'category_id': cheat.category_id,
+            'language': {'id': cheat.language.id, 'name': cheat.language.name},
+            'category': {'id': cheat.category.id, 'name': cheat.category.name}
+        }, 201
 
 
 class CheatDetail(Resource):
@@ -171,7 +183,15 @@ class CheatDetail(Resource):
             cheat.category_id = data['category_id']
         
         db.session.commit()
-        return {'message': 'Updated'}, 200
+        return {
+            'id': cheat.id,
+            'title': cheat.title,
+            'code': cheat.code,
+            'language_id': cheat.language_id,
+            'category_id': cheat.category_id,
+            'language': {'id': cheat.language.id, 'name': cheat.language.name},
+            'category': {'id': cheat.category.id, 'name': cheat.category.name}
+        }, 200
     
     def delete(self, cheat_id):
         user_id = session.get('user_id')

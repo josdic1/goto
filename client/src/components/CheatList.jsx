@@ -18,7 +18,8 @@ export function CheatList({ cheats }) {
           key={cheat.id} 
           cheat={cheat} 
           language={cheat.language} 
-          category={cheat.category} 
+          category={cheat.category}
+  
         />
       ))}
     </div>

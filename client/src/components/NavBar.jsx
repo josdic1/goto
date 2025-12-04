@@ -18,7 +18,7 @@ export function NavBar({ currentTheme, setCurrentTheme }) {
       {/* CENTER: NAVIGATION LINKS */}
       <div className="navbar-center">
         <NavLink to="/" className="nav-link">Home</NavLink>
-        <NavLink to="/cheats" className="nav-link">Cheats</NavLink>
+        <NavLink to="/cheats" className="nav-link">New</NavLink>
       </div>
 
       {/* RIGHT: THEME SWITCHER & LOGOUT */}
@@ -47,3 +47,4 @@ export function NavBar({ currentTheme, setCurrentTheme }) {
     </div>
   );
 }
+

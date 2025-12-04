@@ -1,9 +1,23 @@
 import { Trash2, Edit } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
-export function CheatItem({ cheat, onDelete, onEdit }) {
-  // Safe access to nested language/category data
+export function CheatItem({ cheat }) {
+  const { deleteCheat } = useAuth();
   const langName = cheat.language?.name || "SYS";
   const catName = cheat.category?.name || "GEN";
+
+  const navigate = useNavigate();
+
+  const handleClick = (e) => {
+    const { name } = e.target;
+    if (name === "edit") {
+      navigate(`/cheats/${cheat.id}/edit`);
+    } else if (name === "delete") {
+      deleteCheat(cheat.id);
+      navigate('/')
+    }
+  }
 
   return (
     <div className="terminal-card">
@@ -31,10 +45,10 @@ export function CheatItem({ cheat, onDelete, onEdit }) {
 
       {/* 4. CONTROLS */}
       <div className="terminal-controls">
-        <button onClick={() => onEdit(cheat)} className="control-btn edit">
+        <button name="edit" onClick={handleClick} className="control-btn edit">
             <Edit size={14} /> EDIT
         </button>
-        <button onClick={() => onDelete(cheat.id)} className="control-btn delete">
+        <button name="delete" onClick={handleClick} className="control-btn delete">
             <Trash2 size={14} /> PURGE
         </button>
       </div>
