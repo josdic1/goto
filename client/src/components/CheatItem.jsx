@@ -1,55 +1,59 @@
-import { Trash2, Edit } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
-export function CheatItem({ cheat }) {
-  const { deleteCheat } = useAuth();
-  const langName = cheat.language?.name || "SYS";
-  const catName = cheat.category?.name || "GEN";
-
+export function CheatItem({ cheat, language, category }) {
   const navigate = useNavigate();
+  const { deleteCheat } = useAuth();
 
-  const handleClick = (e) => {
-    const { name } = e.target;
-    if (name === "edit") {
-      navigate(`/cheats/${cheat.id}/edit`);
-    } else if (name === "delete") {
-      deleteCheat(cheat.id);
-      navigate('/')
+  const handleEdit = () => {
+    navigate(`/cheats/${cheat.id}/edit`); s
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm(`Delete "${cheat.title}"?`)) {  
+      await deleteCheat(cheat.id);
     }
-  }
+  };
 
   return (
     <div className="terminal-card">
       {/* 1. STATUS STRIP */}
       <div className="terminal-header">
-        <span className="terminal-id">ID: {cheat.id.toString().padStart(4, '0')}</span>
+        <span className="terminal-id">CHEAT#{cheat.id.toString().padStart(4, '0')}</span>
         <div className="terminal-badges">
-          <span className="badge">{langName.toUpperCase()}</span>
-          <span className="badge">::</span>
-          <span className="badge">{catName.toUpperCase()}</span>
+          <span>{language?.name || 'UNKNOWN'}</span>
+          <span>|</span>
+          <span>{category?.name || 'UNKNOWN'}</span>
         </div>
       </div>
 
-      {/* 2. TITLE DISPLAY */}
+      {/* 2. TITLE */}
       <div className="terminal-body">
         <h3 className="terminal-title">{cheat.title}</h3>
+        
+        {/* Notes Section - Only show if notes exist */}
+        {cheat.notes && (
+          <div className="terminal-notes">
+            <div className="notes-text">{cheat.notes}</div>
+          </div>
+        )}
       </div>
 
       {/* 3. CODE SCREEN */}
       <div className="terminal-screen">
-        <pre>
-          <code>{cheat.code}</code>
-        </pre>
+        <pre><code>{cheat.code}</code></pre>
       </div>
 
-      {/* 4. CONTROLS */}
+      {/* 4. CONTROL BUTTONS */}
       <div className="terminal-controls">
-        <button name="edit" onClick={handleClick} className="control-btn edit">
-            <Edit size={14} /> EDIT
+        <button onClick={handleEdit} className="control-btn">
+          <Edit size={14} />
+          EDIT
         </button>
-        <button name="delete" onClick={handleClick} className="control-btn delete">
-            <Trash2 size={14} /> PURGE
+        <button onClick={handleDelete} className="control-btn delete">
+          <Trash2 size={14} />
+          DELETE
         </button>
       </div>
     </div>

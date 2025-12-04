@@ -20,19 +20,30 @@ with app.app_context():
     # Create languages
     python = Language(name="Python")
     javascript = Language(name="JavaScript")
-    ruby = Language(name="Ruby")
+    sql = Language(name="Sql")
+    terminal = Language(name="Terminal")
+    json = Language(name="Json")
+    regex = Language(name="Regex")
+    css = Language(name="Css")
+    html = Language(name="Html")
+    xml = Language(name="Xml")
     
-    db.session.add_all([python, javascript, ruby])
+    db.session.add_all([python, javascript, sql, terminal, json, regex, css, html, xml])
     db.session.commit()
     print(f"✅ Created {Language.query.count()} languages")
     
     # Create categories
     functions = Category(name="Functions")
     loops = Category(name="Loops")
+    methods = Category(name="Methods")
+    startup = Category(name="Startup")
+    images = Category(name="Images")
+    curl = Category(name="Curl")
+    manupulation = Category(name="Manipulation")
     classes = Category(name="Classes")
     arrays = Category(name="Arrays")
     
-    db.session.add_all([functions, loops, classes, arrays])
+    db.session.add_all([functions, loops, classes, methods, startup, images, curl, manupulation, arrays])
     db.session.commit()
     print(f"✅ Created {Category.query.count()} categories")
     
@@ -72,13 +83,6 @@ with app.app_context():
             user_id=user.id,
             language_id=javascript.id,
             category_id=arrays.id
-        ),
-        Cheat(
-            title="Ruby Block",
-            code="[1,2,3].each { |n| puts n }",
-            user_id=user.id,
-            language_id=ruby.id,
-            category_id=loops.id
         )
     ]
     

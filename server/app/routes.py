@@ -64,8 +64,9 @@ class CheckSession(Resource):
                 'id': cheat.id,
                 'title': cheat.title,
                 'code': cheat.code,
-                'language_id': cheat.language_id,  # ✅ ADD THIS
-                'category_id': cheat.category_id,  # ✅ ADD THIS
+                'notes': cheat.notes,
+                'language_id': cheat.language_id,
+                'category_id': cheat.category_id,
                 'category': {'id': cheat.category.id, 'name': cheat.category.name}
             })
         
@@ -83,16 +84,22 @@ class CheckSession(Resource):
                 'id': cheat.id,
                 'title': cheat.title,
                 'code': cheat.code,
-                'language_id': cheat.language_id,  # ✅ ADD THIS
-                'category_id': cheat.category_id,  # ✅ ADD THIS
+                'notes': cheat.notes,
+                'language_id': cheat.language_id,
+                'category_id': cheat.category_id,
                 'language': {'id': cheat.language.id, 'name': cheat.language.name}
             })
         
+        # ✅ NEST EVERYTHING UNDER USER
         return {
             'logged_in': True,
-            'user': {'id': user.id, 'name': user.name, 'email': user.email},
-            'languages': list(languages.values()),
-            'categories': list(categories.values())
+            'user': {
+                'id': user.id,
+                'name': user.name,
+                'email': user.email,
+                'languages': list(languages.values()),
+                'categories': list(categories.values())
+            }
         }
 
 # ================ CHEAT RESOURCES ================ #
@@ -119,6 +126,7 @@ class CheatList(Resource):
             'id': c.id,
             'title': c.title,
             'code': c.code,
+            'notes': c.notes,
             'language': {'id': c.language.id, 'name': c.language.name},
             'category': {'id': c.category.id, 'name': c.category.name}
         } for c in cheats], 200
@@ -132,6 +140,7 @@ class CheatList(Resource):
         cheat = Cheat(
             title=data['title'],
             code=data['code'],
+            notes=data['notes'],
             user_id=user_id,
             language_id=data['language_id'],
             category_id=data['category_id']
@@ -145,6 +154,7 @@ class CheatList(Resource):
             'id': cheat.id,
             'title': cheat.title,
             'code': cheat.code,
+            'notes': cheat.notes,
             'language_id': cheat.language_id,
             'category_id': cheat.category_id,
             'language': {'id': cheat.language.id, 'name': cheat.language.name},
@@ -177,6 +187,8 @@ class CheatDetail(Resource):
             cheat.title = data['title']
         if 'code' in data:
             cheat.code = data['code']
+        if 'notes' in data:
+            cheat.notes = data['notes']
         if 'language_id' in data:
             cheat.language_id = data['language_id']
         if 'category_id' in data:
@@ -187,6 +199,7 @@ class CheatDetail(Resource):
             'id': cheat.id,
             'title': cheat.title,
             'code': cheat.code,
+            'notes': cheat.notes,
             'language_id': cheat.language_id,
             'category_id': cheat.category_id,
             'language': {'id': cheat.language.id, 'name': cheat.language.name},

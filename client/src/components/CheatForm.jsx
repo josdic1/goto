@@ -3,44 +3,47 @@ import { useNavigate, useParams } from "react-router-dom"
 import { useAuth } from "../hooks/useAuth"
 
 export function CheatForm() {
-    const { userData, languages, categories, createCheat, updateCheat } = useAuth();
+    const { user, createCheat, updateCheat, allCategories, allLanguages } = useAuth();
     const { id } = useParams();
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         title: "",
         code: "",
+        notes: "",
         language_id: "",
         category_id: "",
-        user_id: userData.id || "",
+        user_id: user?.id || "",
     });
 
     const onClear = () => {
         setFormData({
             title: "",
             code: "",
+            notes: "",
             language_id: "",
             category_id: "",
-            user_id: userData.id || "",
+            user_id: user?.id || "",
         });
     }
 
 
 useEffect(() => {
-    if(id) {
-        const allCheats = languages.flatMap(lang => lang.cheats || []);
+    if(id && user?.languages) {
+        const allCheats = user.languages.flatMap(lang => lang.cheats || []);
         const foundCheat = allCheats.find(c => c.id === parseInt(id));
         
         if (foundCheat) {
             setFormData({
                 title: foundCheat.title,
                 code: foundCheat.code,
+                notes: foundCheat.notes,
                 language_id: foundCheat.language_id,
-                category_id: foundCheat.category.id,
-                user_id: userData.id
+                category_id: foundCheat.category_id,
+                user_id: user.id
             });
         }
     }
-}, [id, languages])
+}, [id, user])
 
 
 const handleChange = (e) => {
@@ -80,7 +83,7 @@ const handleSubmit = async (e) => {
          <label htmlFor="language_id">Language</label>
         <select id="language_id" name="language_id" value={formData.language_id} onChange={handleChange}>
             <option value="" disabled>Select a language</option>
-            {languages.map(lang => (
+            {allLanguages.map(lang => (
                 <option key={lang.id} value={lang.id}>
                     {lang.name}
                 </option>       
@@ -90,7 +93,7 @@ const handleSubmit = async (e) => {
           <label htmlFor="category_id">Category</label>
         <select id="category_id" name="category_id" value={formData.category_id} onChange={handleChange}>
             <option value="" disabled>Select a category</option>
-            {categories.map(cat => (
+            {allCategories.map(cat => (
                 <option key={cat.id} value={cat.id}>
                     {cat.name}
                 </option>       
@@ -101,6 +104,9 @@ const handleSubmit = async (e) => {
            <label htmlFor="code">Code</label>
         <textarea id="code" name="code" value={formData.code} onChange={handleChange} />
 
+        <label htmlFor="notes">Notes</label>
+        <input type="text" id="notes" name="notes" value={formData.notes} onChange={handleChange} />
+
         <button type="submit">{id ? 'Update' : 'Create'}</button>
         <button type="button" onClick={onClear}>Clear</button>
     </form>
@@ -109,4 +115,3 @@ const handleSubmit = async (e) => {
     </>
     )
 }
-

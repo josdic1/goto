@@ -3,17 +3,17 @@ import { useState, useEffect } from "react";
 
 export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState(null);
-  const [languages, setLanguages] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [cheats, setCheats] = useState([]);
+  const [user, setUser] = useState(null); // ONE state for everything
+  const [allLanguages, setAllLanguages] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
   
-  const loggedIn = Boolean(userData);
+  const loggedIn = Boolean(user);
   const API_URL = "http://localhost:5555";
-
 
   useEffect(() => {
     checkSession();
+    fetchAllLanguages();
+    fetchAllCategories();
   }, []);
 
   const checkSession = async () => {
@@ -24,31 +24,36 @@ export function AuthProvider({ children }) {
 
       if (response.ok) {
         const data = await response.json();
-
         if (data.logged_in) {
-          setUserData(data.user);
-          setLanguages(data.languages || []);
-          setCategories(data.categories || []);
-          
-          // Extract flat cheats list from nested languages
-          const allCheats = (data.languages || []).flatMap(lang => 
-            (lang.cheats || []).map(cheat => ({
-              ...cheat,
-              language: { id: lang.id, name: lang.name }
-            }))
-          );
-          setCheats(allCheats);
+          setUser(data.user); 
         } else {
-          setUserData(null);
-          setLanguages([]);
-          setCategories([]);
-          setCheats([]);
+          setUser(null);
         }
       }
     } catch (error) {
       console.error("Error checking session:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAllLanguages = async () => {
+    try {
+      const res = await fetch(`${API_URL}/languages`);
+      const data = await res.json();
+      setAllLanguages(data);
+    } catch (err) {
+      console.error("Failed to fetch languages:", err);
+    }
+  };
+
+  const fetchAllCategories = async () => {
+    try {
+      const res = await fetch(`${API_URL}/categories`);
+      const data = await res.json();
+      setAllCategories(data);
+    } catch (err) {
+      console.error("Failed to fetch categories:", err);
     }
   };
 
@@ -100,155 +105,88 @@ export function AuthProvider({ children }) {
         method: "POST",
         credentials: "include",
       });
-      setUserData(null);
-      setLanguages([]);
-      setCategories([]);
-      setCheats([]);
+      setUser(null);
     } catch (error) {
       console.error("Logout error:", error);
     }
   };
 
+  // ✅ THE "IOU" PATTERN - Just update the flat list
   async function createCheat(newCheatData) {
-  try {
-    const res = await fetch(`${API_URL}/cheats`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(newCheatData),
-    });
+    try {
+      const res = await fetch(`${API_URL}/cheats`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(newCheatData),
+      });
 
-    if (!res.ok) {
-      const error = await res.json();
-      return { success: false, error: error.message };
+      if (!res.ok) {
+        const error = await res.json();
+        return { success: false, error: error.message };
+      }
+
+      const newCheat = await res.json();
+
+      // Just refetch - simplest solution
+      await checkSession();
+
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: "Network error" };
     }
-
-    const newCheat = await res.json();
-
-    // Update nested languages
-    setLanguages(prev => prev.map(lang => 
-      lang.id === newCheat.language_id
-        ? { ...lang, cheats: [...(lang.cheats || []), newCheat] }
-        : lang
-    ));
-
-    // Update nested categories
-    setCategories(prev => prev.map(cat => 
-      cat.id === newCheat.category_id
-        ? { ...cat, cheats: [...(cat.cheats || []), newCheat] }
-        : cat
-    ));
-
-    // Update flat cheats list (newCheat already has language/category from backend)
-    setCheats(prev => [...prev, newCheat]);
-
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: "Network error" };
   }
-}
 
-async function updateCheat(cheatId, updatedData) {
-  try {
-    const res = await fetch(`${API_URL}/cheats/${cheatId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(updatedData),
-    });
+  async function updateCheat(cheatId, updatedData) {
+    try {
+      const res = await fetch(`${API_URL}/cheats/${cheatId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(updatedData),
+      });
 
-    if (!res.ok) {
-      const error = await res.json();
-      return { success: false, error: error.message };
+      if (!res.ok) {
+        const error = await res.json();
+        return { success: false, error: error.message };
+      }
+
+      // Just refetch
+      await checkSession();
+
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: "Network error" };
     }
-
-    const updatedCheat = await res.json();
-
-    // Update languages: remove from old, add to new
-    setLanguages(prev => prev
-      .map(lang => ({
-        ...lang,
-        cheats: lang.cheats.filter(c => c.id !== updatedCheat.id) // Remove from all
-      }))
-      .map(lang => 
-        lang.id === updatedCheat.language_id
-          ? { ...lang, cheats: [...lang.cheats, updatedCheat] } // Add to new language
-          : lang
-      )
-      .filter(lang => lang.cheats.length > 0) // Remove empty languages
-    );
-
-    // Update categories: remove from old, add to new
-    setCategories(prev => prev
-      .map(cat => ({
-        ...cat,
-        cheats: cat.cheats.filter(c => c.id !== updatedCheat.id) // Remove from all
-      }))
-      .map(cat => 
-        cat.id === updatedCheat.category_id
-          ? { ...cat, cheats: [...cat.cheats, updatedCheat] } // Add to new category
-          : cat
-      )
-      .filter(cat => cat.cheats.length > 0) // Remove empty categories
-    );
-
-    // Update flat cheats list
-    setCheats(prev => prev.map(cheat => 
-      cheat.id === updatedCheat.id ? updatedCheat : cheat
-    ));
-
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: "Network error" };
   }
-}
 
-async function deleteCheat(cheatId) {
-  try {
-    const res = await fetch(`${API_URL}/cheats/${cheatId}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
+  async function deleteCheat(cheatId) {
+    try {
+      const res = await fetch(`${API_URL}/cheats/${cheatId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
 
-    if (!res.ok) {
-      const error = await res.json();
-      return { success: false, error: error.message };
+      if (!res.ok) {
+        const error = await res.json();
+        return { success: false, error: error.message };
+      }
+
+      // Just refetch
+      await checkSession();
+
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: "Network error" };
     }
-
-    // Remove from nested languages and filter out empty ones
-    setLanguages(prev => prev
-      .map(lang => ({
-        ...lang,
-        cheats: lang.cheats.filter(cheat => cheat.id !== cheatId)
-      }))
-      .filter(lang => lang.cheats.length > 0) // ✅ Remove languages with no cheats
-    );
-
-    // Remove from nested categories and filter out empty ones
-    setCategories(prev => prev
-      .map(cat => ({
-        ...cat,
-        cheats: cat.cheats.filter(cheat => cheat.id !== cheatId)
-      }))
-      .filter(cat => cat.cheats.length > 0) // ✅ Remove categories with no cheats
-    );
-
-    // Remove from flat cheats list
-    setCheats(prev => prev.filter(cheat => cheat.id !== cheatId));
-
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: "Network error" };
   }
-}
 
   const value = {
     loading,
     loggedIn,
-    userData,
-    languages,
-    categories,
-    cheats,
+    user, // ✅ Everything is here: user.languages, user.categories
+    allLanguages,
+    allCategories,
     signup,
     login,
     logout,

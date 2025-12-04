@@ -7,6 +7,44 @@ code { font-family:source-code-pro,Menlo,Monaco,Consolas,'Courier New',monospace
 @keyframes pulse { 0%,100%{opacity:.6} 50%{opacity:1} }
 @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
 
+/* ================= WARGAMES THEME OVERRIDES ================= */
+[data-theme="wargames"] {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #151515;
+  --bg-tertiary: #1a1a1a;
+  --border-primary: #33aa33;
+  --border-secondary: #2a5a2a;
+  --text-primary: #33aa33;
+}
+
+[data-theme="wargames"] .language-icon-btn,
+[data-theme="wargames"] .category-btn {
+  background: #1a1a1a;
+  border-color: #2a5a2a;
+}
+
+[data-theme="wargames"] .language-icon-btn:hover,
+[data-theme="wargames"] .category-btn:hover {
+  background: #252525;
+  border-color: #33aa33;
+}
+
+[data-theme="wargames"] .form-container input[type="text"],
+[data-theme="wargames"] .form-container select,
+[data-theme="wargames"] .form-container textarea {
+  background: #1a1a1a;
+  border-color: #2a5a2a;
+}
+
+[data-theme="wargames"] .terminal-card {
+  background: #151515;
+}
+
+[data-theme="wargames"] .filter-panel,
+[data-theme="wargames"] .form-container form {
+  background: #151515;
+}
+
 .app-container { min-height:100vh; background:var(--bg-primary); color:var(--text-primary); font-family:var(--font-primary); font-size:var(--font-size-base); letter-spacing:var(--letter-spacing); line-height:var(--line-height); text-shadow:var(--shadow-text); }
 .scanline { position:fixed; inset:0; pointer-events:none; z-index:10000; }
 .control-panel { padding:20px 40px; border-bottom:1px solid var(--border-primary); }
@@ -36,6 +74,7 @@ code { font-family:source-code-pro,Menlo,Monaco,Consolas,'Courier New',monospace
 .code-block { background:var(--bg-primary); border:1px solid var(--border-secondary); padding:10px; font-size:12px; overflow:auto; max-height:200px; margin:10px 0; }
 .no-results { text-align:center; padding:60px 20px; font-size:14px; opacity:.5; }
 .no-results-icon { font-size:48px; margin-bottom:20px; }
+
 /* CheatList - All styles centralized */
 .cheatlist-container {
   padding: 1rem;
@@ -365,7 +404,7 @@ code { font-family:source-code-pro,Menlo,Monaco,Consolas,'Courier New',monospace
 .nav-logout {
   background: transparent;
   border: none;
-  color: #ef4444; /* Red tint */
+  color: #ef4444;
   font-family: var(--font-primary);
   font-size: 12px;
   cursor: pointer;
@@ -403,7 +442,7 @@ code { font-family:source-code-pro,Menlo,Monaco,Consolas,'Courier New',monospace
 /* Hover Effect: The "Active Terminal" Glow */
 .terminal-card:hover {
   border-color: var(--text-primary);
-  box-shadow: 0 0 15px rgba(51, 170, 51, 0.15); /* Subtle green glow */
+  box-shadow: 0 0 15px rgba(51, 170, 51, 0.15);
   transform: translateY(-2px);
 }
 
@@ -448,7 +487,7 @@ code { font-family:source-code-pro,Menlo,Monaco,Consolas,'Courier New',monospace
 
 /* 3. CODE SCREEN */
 .terminal-screen {
-  background: #000; /* Always black for contrast */
+  background: #000;
   margin: 10px 15px;
   border: 1px solid var(--border-primary);
   padding: 12px;
@@ -477,7 +516,7 @@ code { font-family:source-code-pro,Menlo,Monaco,Consolas,'Courier New',monospace
 .terminal-screen code {
   font-family: 'Courier New', monospace;
   font-size: 13px;
-  color: #33ff33; /* Classic Terminal Green Text */
+  color: #33ff33;
   line-height: 1.4;
 }
 
@@ -496,7 +535,7 @@ code { font-family:source-code-pro,Menlo,Monaco,Consolas,'Courier New',monospace
   display: flex;
   gap: 10px;
   border-top: 1px solid var(--border-primary);
-  margin-top: auto; /* Pushes buttons to bottom */
+  margin-top: auto;
   background: rgba(0,0,0,0.1);
 }
 
@@ -546,16 +585,16 @@ code { font-family:source-code-pro,Menlo,Monaco,Consolas,'Courier New',monospace
 /* 1. THE LAYOUT ENGINE (This makes them side-by-side) */
 .filter-sections {
   display: flex;
-  flex-direction: row; /* <--- CRITICAL: Row, not Column */
-  flex-wrap: wrap;     /* Wrap on small screens */
-  gap: 40px;           /* Space between the two groups */
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 40px;
   align-items: flex-start;
 }
 
 /* 2. INDIVIDUAL COLUMNS */
 .filter-section {
-  flex: 1;             /* Both take up equal space */
-  min-width: 300px;    /* Don't get smaller than this */
+  flex: 1;
+  min-width: 300px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -709,4 +748,322 @@ code { font-family:source-code-pro,Menlo,Monaco,Consolas,'Courier New',monospace
 /* Boutique theme clear button */
 [data-theme="boutique"] .search-clear:hover {
   background: rgba(0, 0, 0, 0.05);
+}
+
+/* ================= FORM STYLES ================= */
+
+.form-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.form-container > button[type='button'] {
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: 8px 16px;
+  font-family: var(--font-primary);
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  margin-bottom: 30px;
+  transition: all 0.2s;
+}
+
+.form-container > button[type='button']:hover {
+  background: var(--bg-secondary);
+  border-color: var(--text-primary);
+}
+
+.form-container form {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-container label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.form-container input[type="text"],
+.form-container select,
+.form-container textarea {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: 12px;
+  font-family: var(--font-primary);
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-container input[type="text"]:focus,
+.form-container select:focus,
+.form-container textarea:focus {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 10px rgba(51, 255, 51, 0.1);
+}
+
+.form-container textarea {
+  min-height: 200px;
+  font-family: 'Courier New', monospace;
+  resize: vertical;
+}
+
+.form-container select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2333aa33' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+}
+
+[data-theme="boutique"] .form-container select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%230d6efd' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+}
+
+.form-container button[type="submit"],
+.form-container button[type="button"] {
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: 12px 24px;
+  font-family: var(--font-primary);
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 10px;
+}
+
+.form-container button[type="submit"]:hover {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  transform: translateY(-2px);
+}
+
+.form-container button[type="button"]:hover {
+  background: var(--bg-primary);
+  border-color: var(--text-primary);
+}
+
+.form-container button[type="submit"] {
+  font-weight: bold;
+}
+
+/* ================= NOTES SECTION IN CARDS (UPDATED) ================= */
+
+.terminal-notes {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 2px solid var(--border-secondary);
+  border-radius: 2px;
+}
+
+.notes-label {
+  display: none; /* Hide the NOTES: label */
+}
+
+.notes-text {
+  font-size: 11px;
+  line-height: 1.6;
+  font-style: italic;
+  opacity: 0.75;
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: 0.3px;
+}
+
+/* Wargames theme notes */
+[data-theme="wargames"] .terminal-notes {
+  background: rgba(51, 170, 51, 0.05);
+  border-left-color: #2a5a2a;
+}
+
+[data-theme="wargames"] .notes-text {
+  color: #7acc7a;
+}
+
+/* Boutique theme notes */
+[data-theme="boutique"] .terminal-notes {
+  background: #f8f9fa;
+  border-left-color: #dee2e6;
+}
+
+[data-theme="boutique"] .notes-text {
+  color: #6c757d;
+}
+
+/* ================= LOGIN/SIGNUP PAGE STYLES ================= */
+
+.login-page-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--bg-primary);
+}
+
+.login-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  padding: 40px;
+  max-width: 450px;
+  width: 100%;
+}
+
+.login-card h1 {
+  font-family: var(--font-primary);
+  font-size: 24px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 30px;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.login-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.login-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 12px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  font-family: var(--font-primary);
+}
+
+.login-card input {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: 14px;
+  font-family: var(--font-primary);
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  transition: border-color 0.2s;
+}
+
+.login-card input:focus {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 10px rgba(51, 255, 51, 0.1);
+}
+
+.login-card input::placeholder {
+  color: var(--text-primary);
+  opacity: 0.3;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.login-card button[type="submit"] {
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: 14px;
+  font-family: var(--font-primary);
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.login-card button[type="submit"]:hover {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(51, 255, 51, 0.2);
+}
+
+.login-card p {
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.7;
+  letter-spacing: 0.5px;
+  margin-top: 10px;
+}
+
+.login-card a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  font-weight: bold;
+}
+
+.login-card a:hover {
+  opacity: 0.8;
+}
+
+/* Boutique theme login overrides */
+[data-theme="boutique"] .login-card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="boutique"] .login-card h1 {
+  color: #1f2937;
+}
+
+[data-theme="boutique"] .login-error {
+  background: #fee;
+}
+
+/* Magic prefill button */
+.magic-prefill-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  opacity: 0.2;
+  cursor: pointer;
+  padding: 8px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.magic-prefill-btn:hover {
+  opacity: 0.6;
+  transform: rotate(15deg) scale(1.1);
+}
+
+.magic-prefill-btn:active {
+  transform: rotate(15deg) scale(0.95);
+}
+
+/* Make login-card relative for absolute positioning */
+.login-card {
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  padding: 40px;
+  max-width: 450px;
+  width: 100%;
 }

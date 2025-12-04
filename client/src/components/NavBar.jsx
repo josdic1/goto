@@ -3,7 +3,7 @@ import { useAuth } from "../hooks/useAuth";
 import { LogOut, Monitor } from "lucide-react";
 
 export function NavBar({ currentTheme, setCurrentTheme }) {
-  const { userData, logout } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <div className="app-navbar">
@@ -11,7 +11,7 @@ export function NavBar({ currentTheme, setCurrentTheme }) {
       <div className="navbar-left">
         <span className="navbar-brand">CHEATCODE</span>
         <span className="navbar-user">
-            {userData?.name ? `(${userData.name})` : '(GUEST)'}
+            {user?.name ? `(${user.name})` : '(GUEST)'}
         </span>
       </div>
 

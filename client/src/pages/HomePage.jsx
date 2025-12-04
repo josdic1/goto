@@ -1,12 +1,15 @@
+// HomePage.jsx
 import { useAuth } from "../hooks/useAuth";
 import { MetricsPanel } from "../components/home/MetricsPanel";
 import { FilterPanel } from "../components/home/FilterPanel";
 
 export function HomePage() {
-  const { languages, categories } = useAuth();
+  const { user } = useAuth();
+
+  if (!user) return null;
 
   // Flatten all cheats for metrics
-  const allCheats = languages.flatMap(lang => 
+  const allCheats = user.languages.flatMap(lang => 
     lang.cheats.map(cheat => ({ ...cheat, language: { id: lang.id, name: lang.name } }))
   );
 
@@ -14,14 +17,14 @@ export function HomePage() {
     <div className="cheat-browser-page">
       <MetricsPanel 
         allCheats={allCheats}
-        languages={languages} 
-        categories={categories} 
+        languages={user.languages} 
+        categories={user.categories} 
       />
 
       <FilterPanel
         allCheats={allCheats}
-        languages={languages}
-        categories={categories}
+        languages={user.languages}
+        categories={user.categories}
       />
     </div>
   );

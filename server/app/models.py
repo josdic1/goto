@@ -64,15 +64,17 @@ class Cheat(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     code = db.Column(db.Text, nullable=False)
+    notes = db.Column(db.Text(100), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     language_id = db.Column(db.Integer, db.ForeignKey('languages.id'), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    def __init__(self, title, code, user_id, language_id, category_id):
+    def __init__(self, title, code, user_id, language_id, category_id, notes=None):
         self.title = title
         self.code = code
+        self.notes = notes
         self.user_id = user_id
         self.language_id = language_id
         self.category_id = category_id
