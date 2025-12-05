@@ -2,44 +2,92 @@ from flask import request, jsonify, session
 from flask_restful import Resource
 from app.extensions import db
 from app.models import User, Cheat, Language, Category
+from app.serializers import (
+    simple_user_schema,
+    user_schema,
+    language_schema, languages_schema,
+    category_schema, categories_schema,
+    cheat_schema, cheats_schema
+)
 
 # ================ AUTH RESOURCES ================ #
 
 class Signup(Resource):
     def post(self):
+        """Create new user account."""
         data = request.get_json()
         
+        # Check if email already exists
         if User.query.filter_by(email=data.get('email')).first():
             return {'error': 'Email already exists'}, 400
         
-        user = User(name=data['name'], email=data['email'], password=data['password'])
+        # Create new user (password auto-hashed in __init__)
+        user = User(
+            name=data['name'],
+            email=data['email'],
+            password=data['password']
+        )
         db.session.add(user)
         db.session.commit()
         
+        # Set session
         session['user_id'] = user.id
-        return {'id': user.id, 'name': user.name, 'email': user.email}, 201
+        
+        # Return simple user data (no cheats needed for signup)
+        return simple_user_schema.dump(user), 201
 
 
 class Login(Resource):
     def post(self):
+        """Authenticate user."""
         data = request.get_json()
         user = User.query.filter_by(email=data.get('email')).first()
         
+        # Verify credentials
         if user and user.authenticate(data.get('password')):
             session['user_id'] = user.id
-            return {'id': user.id, 'name': user.name, 'email': user.email}
+            # Return simple user data (no cheats needed for login)
+            return simple_user_schema.dump(user), 200
         
         return {'error': 'Invalid credentials'}, 401
 
 
 class Logout(Resource):
     def post(self):
+        """End user session."""
         session.pop('user_id', None)
         return {'message': 'Logged out'}, 200
 
 
 class CheckSession(Resource):
     def get(self):
+        """
+        Verify session and return user data with grouped cheats.
+        
+        Returns:
+            {
+                'logged_in': True,
+                'user': {
+                    'id': 1,
+                    'name': 'Josh',
+                    'email': 'josh@josh.com',
+                    'languages': [
+                        {
+                            'id': 1,
+                            'name': 'JavaScript',
+                            'cheats': [...]
+                        }
+                    ],
+                    'categories': [
+                        {
+                            'id': 1,
+                            'name': 'Arrays',
+                            'cheats': [...]
+                        }
+                    ]
+                }
+            }
+        """
         user_id = session.get('user_id')
         if not user_id:
             return {'logged_in': False}, 401
@@ -48,70 +96,29 @@ class CheckSession(Resource):
         if not user:
             return {'error': 'User not found'}, 404
         
-        cheats = Cheat.query.filter_by(user_id=user_id).all()
-        
-        # Group by language
-        languages = {}
-        for cheat in cheats:
-            lang_id = cheat.language_id
-            if lang_id not in languages:
-                languages[lang_id] = {
-                    'id': cheat.language.id,
-                    'name': cheat.language.name,
-                    'cheats': []
-                }
-            languages[lang_id]['cheats'].append({
-                'id': cheat.id,
-                'title': cheat.title,
-                'code': cheat.code,
-                'notes': cheat.notes,
-                'language_id': cheat.language_id,
-                'category_id': cheat.category_id,
-                'category': {'id': cheat.category.id, 'name': cheat.category.name}
-            })
-        
-        # Group by category
-        categories = {}
-        for cheat in cheats:
-            cat_id = cheat.category_id
-            if cat_id not in categories:
-                categories[cat_id] = {
-                    'id': cheat.category.id,
-                    'name': cheat.category.name,
-                    'cheats': []
-                }
-            categories[cat_id]['cheats'].append({
-                'id': cheat.id,
-                'title': cheat.title,
-                'code': cheat.code,
-                'notes': cheat.notes,
-                'language_id': cheat.language_id,
-                'category_id': cheat.category_id,
-                'language': {'id': cheat.language.id, 'name': cheat.language.name}
-            })
-        
-        # ✅ NEST EVERYTHING UNDER USER
+        # Schema handles ALL the grouping logic!
         return {
             'logged_in': True,
-            'user': {
-                'id': user.id,
-                'name': user.name,
-                'email': user.email,
-                'languages': list(languages.values()),
-                'categories': list(categories.values())
-            }
-        }
+            'user': user_schema.dump(user)
+        }, 200
+
 
 # ================ CHEAT RESOURCES ================ #
 
 class CheatList(Resource):
     def get(self):
+        """
+        Get all cheats for logged-in user.
+        Optional filters: language_id, category_id
+        """
         user_id = session.get('user_id')
         if not user_id:
             return {'error': 'Not logged in'}, 401
         
+        # Base query
         query = Cheat.query.filter_by(user_id=user_id)
         
+        # Apply filters if provided
         language_id = request.args.get('language_id')
         if language_id:
             query = query.filter_by(language_id=language_id)
@@ -122,25 +129,22 @@ class CheatList(Resource):
         
         cheats = query.all()
         
-        return [{
-            'id': c.id,
-            'title': c.title,
-            'code': c.code,
-            'notes': c.notes,
-            'language': {'id': c.language.id, 'name': c.language.name},
-            'category': {'id': c.category.id, 'name': c.category.name}
-        } for c in cheats], 200
+        # Serialize with nested language and category
+        return cheats_schema.dump(cheats), 200
     
-    def post(self): 
+    def post(self):
+        """Create new cheat."""
         user_id = session.get('user_id')
         if not user_id:
             return {'error': 'Not logged in'}, 401
         
         data = request.get_json()
+        
+        # Create cheat
         cheat = Cheat(
             title=data['title'],
             code=data['code'],
-            notes=data['notes'],
+            notes=data.get('notes', ''),
             user_id=user_id,
             language_id=data['language_id'],
             category_id=data['category_id']
@@ -149,39 +153,29 @@ class CheatList(Resource):
         db.session.add(cheat)
         db.session.commit()
         
-        # Return COMPLETE data
-        return {
-            'id': cheat.id,
-            'title': cheat.title,
-            'code': cheat.code,
-            'notes': cheat.notes,
-            'language_id': cheat.language_id,
-            'category_id': cheat.category_id,
-            'language': {'id': cheat.language.id, 'name': cheat.language.name},
-            'category': {'id': cheat.category.id, 'name': cheat.category.name}
-        }, 201
+        # Return complete cheat with nested relationships
+        return cheat_schema.dump(cheat), 201
 
 
 class CheatDetail(Resource):
     def get(self, cheat_id):
+        """Get single cheat by ID."""
         cheat = Cheat.query.get_or_404(cheat_id)
-        return {
-            'id': cheat.id,
-            'title': cheat.title,
-            'code': cheat.code,
-            'language': {'id': cheat.language.id, 'name': cheat.language.name},
-            'category': {'id': cheat.category.id, 'name': cheat.category.name}
-        }, 200
+        return cheat_schema.dump(cheat), 200
     
     def patch(self, cheat_id):
+        """Update cheat."""
         user_id = session.get('user_id')
         if not user_id:
             return {'error': 'Not logged in'}, 401
         
         cheat = Cheat.query.get_or_404(cheat_id)
+        
+        # Verify ownership
         if cheat.user_id != user_id:
             return {'error': 'Unauthorized'}, 403
         
+        # Update fields if provided
         data = request.get_json()
         if 'title' in data:
             cheat.title = data['title']
@@ -195,23 +189,19 @@ class CheatDetail(Resource):
             cheat.category_id = data['category_id']
         
         db.session.commit()
-        return {
-            'id': cheat.id,
-            'title': cheat.title,
-            'code': cheat.code,
-            'notes': cheat.notes,
-            'language_id': cheat.language_id,
-            'category_id': cheat.category_id,
-            'language': {'id': cheat.language.id, 'name': cheat.language.name},
-            'category': {'id': cheat.category.id, 'name': cheat.category.name}
-        }, 200
+        
+        # Return updated cheat with nested relationships
+        return cheat_schema.dump(cheat), 200
     
     def delete(self, cheat_id):
+        """Delete cheat."""
         user_id = session.get('user_id')
         if not user_id:
             return {'error': 'Not logged in'}, 401
         
         cheat = Cheat.query.get_or_404(cheat_id)
+        
+        # Verify ownership
         if cheat.user_id != user_id:
             return {'error': 'Unauthorized'}, 403
         
@@ -225,24 +215,25 @@ class CheatDetail(Resource):
 
 class LanguageList(Resource):
     def get(self):
+        """Get all languages."""
         languages = Language.query.all()
-        return [{'id': l.id, 'name': l.name} for l in languages], 200
+        return languages_schema.dump(languages), 200
 
 
 # ================ CATEGORY RESOURCES ================ #
 
 class CategoryList(Resource):
     def get(self):
+        """Get all categories."""
         categories = Category.query.all()
-        return [{'id': c.id, 'name': c.name} for c in categories], 200
-
+        return categories_schema.dump(categories), 200
 
 
 # ================ DEV TOOLS RESOURCE ================ #
 
 class DevToolsResource(Resource):
     def post(self):
-        """Execute development commands"""
+        """Execute development commands."""
         data = request.get_json()
         command = data.get('command')
         
@@ -337,7 +328,7 @@ class DevToolsResource(Resource):
                 # Generate seed file from current database
                 seed_content = self._generate_seed_file()
                 
-                with open('seed.py', 'w') as f:
+                with open('seed_generated.py', 'w') as f:
                     f.write(seed_content)
                     
                 results['output'] = "✓ Generated seed_generated.py from current database!\n\n"
@@ -360,7 +351,7 @@ class DevToolsResource(Resource):
         return jsonify(results)
     
     def _generate_seed_file(self):
-        """Generate a seed.py file from current database state"""
+        """Generate a seed.py file from current database state."""
         from datetime import datetime
         
         users = User.query.all()
@@ -371,29 +362,34 @@ class DevToolsResource(Resource):
         # Generate user code
         user_lines = []
         for u in users:
-            # Use _password_hash (private attribute) instead of password_hash
-            user_lines.append(f"        users['{u.name}'] = User(\n"
-                             f"            name='{u.name}',\n"
-                             f"            email='{u.email}'\n"
-                             f"        )\n"
-                             f"        users['{u.name}']._password_hash = '{u._password_hash}'\n"
-                             f"        db.session.add(users['{u.name}'])")
+            user_lines.append(
+                f"        users['{u.name}'] = User(\n"
+                f"            name='{u.name}',\n"
+                f"            email='{u.email}'\n"
+                f"        )\n"
+                f"        users['{u.name}']._password_hash = '{u._password_hash}'\n"
+                f"        db.session.add(users['{u.name}'])"
+            )
         
         # Generate language code
         lang_lines = []
         for lang in languages:
-            lang_lines.append(f"        languages['{lang.name}'] = Language(\n"
-                             f"            name='{lang.name}'\n"
-                             f"        )\n"
-                             f"        db.session.add(languages['{lang.name}'])")
+            lang_lines.append(
+                f"        languages['{lang.name}'] = Language(\n"
+                f"            name='{lang.name}'\n"
+                f"        )\n"
+                f"        db.session.add(languages['{lang.name}'])"
+            )
         
         # Generate category code
         cat_lines = []
         for cat in categories:
-            cat_lines.append(f"        categories['{cat.name}'] = Category(\n"
-                            f"            name='{cat.name}'\n"
-                            f"        )\n"
-                            f"        db.session.add(categories['{cat.name}'])")
+            cat_lines.append(
+                f"        categories['{cat.name}'] = Category(\n"
+                f"            name='{cat.name}'\n"
+                f"        )\n"
+                f"        db.session.add(categories['{cat.name}'])"
+            )
         
         # Generate cheat code
         cheat_lines = []
@@ -462,10 +458,10 @@ def seed_database():
         db.session.commit()
         
         print("✅ Seed completed!")
-        print(f"  • {{{{len(users)}}}} users")
-        print(f"  • {{{{len(languages)}}}} languages")
-        print(f"  • {{{{len(categories)}}}} categories")
-        print(f"  • {{{{len(cheats)}}}} cheats")
+        print(f"  • {{len(users)}} users")
+        print(f"  • {{len(languages)}} languages")
+        print(f"  • {{len(categories)}} categories")
+        print(f"  • {{len(cheats)}} cheats")
 
 if __name__ == "__main__":
     seed_database()
@@ -479,9 +475,11 @@ if __name__ == "__main__":
             cheat_code='\n'.join(cheat_lines) if cheat_lines else '        pass'
         )
 
+
 # ================ REGISTER ROUTES ================ #
 
 def initialize_routes(api):
+    """Register all API endpoints."""
     # Auth
     api.add_resource(Signup, '/signup')
     api.add_resource(Login, '/login')
