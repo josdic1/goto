@@ -9,6 +9,11 @@ export function NavBar({ currentTheme, setCurrentTheme }) {
     <div className="app-navbar">
       {/* LEFT: BRAND & USER */}
       <div className="navbar-left">
+        <img 
+          src="/vite.svg" 
+          alt="Logo" 
+          style={{ width: '32px', height: '32px' }}
+        />
         <span className="navbar-brand">CHEATCODE</span>
         <span className="navbar-user">
             {user?.name ? `(${user.name})` : '(GUEST)'}
@@ -19,6 +24,7 @@ export function NavBar({ currentTheme, setCurrentTheme }) {
       <div className="navbar-center">
         <NavLink to="/" className="nav-link">Home</NavLink>
         <NavLink to="/cheats" className="nav-link">New</NavLink>
+        <NavLink to="/devtools" className="nav-link">Dev</NavLink>
       </div>
 
       {/* RIGHT: THEME SWITCHER & LOGOUT */}
@@ -47,4 +53,3 @@ export function NavBar({ currentTheme, setCurrentTheme }) {
     </div>
   );
 }
-

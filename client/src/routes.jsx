@@ -1,5 +1,6 @@
 import App from './App.jsx';
 import { CheatForm } from './components/CheatForm.jsx';
+import { DevTools } from './pages/DevTools.jsx';
 import { ErrorPage } from './pages/ErrorPage.jsx';
 import { HomePage } from './pages/HomePage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
@@ -19,16 +20,21 @@ export const routes = [
                     <ProtectedRoute>
                         <HomePage />
                     </ProtectedRoute>,
-            },{
+            },
+            {
+                path: '/devtools',
+                element: <ProtectedRoute><DevTools /></ProtectedRoute>
+            },
+            {
                 path: '/login',
                 element: <LoginPage />
             },{
                 path: '/cheats',
-                element: <CheatForm />
+                element: <ProtectedRoute><CheatForm /></ProtectedRoute>
             },
             {
                 path: '/cheats/:id/edit',
-                element: <CheatForm />
+                element: <ProtectedRoute><CheatForm /></ProtectedRoute>
             },
             {
                 path: '/signup',
