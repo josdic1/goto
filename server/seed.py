@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Auto-generated seed file
-Generated: 2025-12-05T11:59:47.097093
+Generated: 2025-12-10T10:18:52.182114
 """
 from app import create_app
 from app.extensions import db
@@ -133,7 +133,7 @@ def seed_database():
             code='npm create vite@latest client -- --template react\ncd client\nnpm install\nnpm install react-router-dom lucide-react',
             notes='Executed from existing client folder with router and lucide',
             user=users['Josh'],
-            language=languages['Terminal'],
+            language=languages['React'],
             category=categories['Startup']
         )
         db.session.add(cheat)
@@ -551,13 +551,31 @@ def seed_database():
             category=categories['Methods']
         )
         db.session.add(cheat)
+        cheat = Cheat(
+            title='Marshmallow schema with ma.Method for custom field serialization',
+            code='class UserSchema(ma.SQLAlchemyAutoSchema):\n    languages = ma.Method(\"get_languages_with_cheats\")\n    \n    def get_languages_with_cheats(self, user):\n        # Custom grouping logic here\n        return [...]',
+            notes='I\'m using Marshmallow SQLAlchemyAutoSchema with custom serialization  methods defined using ma.Method. This allows me to override specific  fields with custom logic while keeping automatic serialization for  other fields.',
+            user=users['Josh'],
+            language=languages['Python'],
+            category=categories['Classes']
+        )
+        db.session.add(cheat)
+        cheat = Cheat(
+            title='Remove Screenshots in Downloads',
+            code='rm ~/Downloads/screenshot*.png',
+            notes='Removes all files titled \'screenshot_...\' in the Downloads folder',
+            user=users['Josh'],
+            language=languages['Terminal'],
+            category=categories['Methods']
+        )
+        db.session.add(cheat)
         db.session.commit()
         
         print("✅ Seed completed!")
-        print(f"  • {{len(users)}} users")
-        print(f"  • {{len(languages)}} languages")
-        print(f"  • {{len(categories)}} categories")
-        print(f"  • {{len(cheats)}} cheats")
+        print(f"  • {len(users)} users")
+        print(f"  • {len(languages)} languages")
+        print(f"  • {len(categories)} categories")
+        print(f"  • {len(cheats)} cheats")
 
 if __name__ == "__main__":
     seed_database()

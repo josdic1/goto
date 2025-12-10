@@ -328,16 +328,17 @@ class DevToolsResource(Resource):
                 # Generate seed file from current database
                 seed_content = self._generate_seed_file()
                 
-                with open('seed_generated.py', 'w') as f:
+                # ✅ OVERWRITES seed.py directly
+                with open('seed.py', 'w') as f:
                     f.write(seed_content)
                     
-                results['output'] = "✓ Generated seed_generated.py from current database!\n\n"
+                results['output'] = "✓ Generated seed.py from current database!\n\n"
                 results['output'] += "File contents:\n"
                 results['output'] += "• All users with hashed passwords\n"
                 results['output'] += "• All languages\n"
                 results['output'] += "• All categories\n"
                 results['output'] += "• All cheats with code and notes\n\n"
-                results['output'] += "Run with: python seed_generated.py"
+                results['output'] += "Run with: python seed.py"
                 results['success'] = True
                 
             else:
@@ -481,18 +482,18 @@ if __name__ == "__main__":
 def initialize_routes(api):
     """Register all API endpoints."""
     # Auth
-    api.add_resource(Signup, '/signup')
-    api.add_resource(Login, '/login')
-    api.add_resource(Logout, '/logout')
-    api.add_resource(CheckSession, '/check_session')
+    api.add_resource(Signup, '/api/signup')
+    api.add_resource(Login, '/api/login')
+    api.add_resource(Logout, '/api/logout')
+    api.add_resource(CheckSession, '/api/check_session')
     
     # Cheats
-    api.add_resource(CheatList, '/cheats')
-    api.add_resource(CheatDetail, '/cheats/<int:cheat_id>')
+    api.add_resource(CheatList, '/api/cheats')
+    api.add_resource(CheatDetail, '/api/cheats/<int:cheat_id>')
     
     # Languages & Categories
-    api.add_resource(LanguageList, '/languages')
-    api.add_resource(CategoryList, '/categories')
+    api.add_resource(LanguageList, '/api/languages')
+    api.add_resource(CategoryList, '/api/categories')
     
     # Dev Tools
-    api.add_resource(DevToolsResource, '/dev-tools')
+    api.add_resource(DevToolsResource, '/api/dev-tools')

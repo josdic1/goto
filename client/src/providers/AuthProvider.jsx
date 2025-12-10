@@ -6,9 +6,9 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null); // ONE state for everything
   const [allLanguages, setAllLanguages] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
-  
+
   const loggedIn = Boolean(user);
-  const API_URL = "http://localhost:5555";
+  const API_URL = "http://localhost:5555/api";
 
   useEffect(() => {
     checkSession();
@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
       if (response.ok) {
         const data = await response.json();
         if (data.logged_in) {
-          setUser(data.user); 
+          setUser(data.user);
         } else {
           setUser(null);
         }
@@ -65,7 +65,7 @@ export function AuthProvider({ children }) {
         credentials: "include",
         body: JSON.stringify(credentials),
       });
-      
+
       if (res.ok) {
         await checkSession();
         return { success: true };
@@ -193,16 +193,26 @@ export function AuthProvider({ children }) {
     checkSession,
     createCheat,
     updateCheat,
-    deleteCheat
+    deleteCheat,
   };
 
   if (loading) {
-    return <div style={{ background: '#0a0a0a', color: '#33aa33', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace' }}>LOADING...</div>;
+    return (
+      <div
+        style={{
+          background: "#0a0a0a",
+          color: "#33aa33",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "monospace",
+        }}
+      >
+        LOADING...
+      </div>
+    );
   }
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
