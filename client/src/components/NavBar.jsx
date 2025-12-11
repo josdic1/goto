@@ -25,6 +25,7 @@ export function NavBar({ currentTheme, setCurrentTheme }) {
         <NavLink to="/" className="nav-link">Home</NavLink>
         <NavLink to="/cheats" className="nav-link">New</NavLink>
         <NavLink to="/devtools" className="nav-link">Dev</NavLink>
+        <NavLink to="/generator" className="nav-link">Backend</NavLink>
       </div>
 
       {/* RIGHT: THEME SWITCHER & LOGOUT */}
