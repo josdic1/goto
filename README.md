@@ -1,70 +1,13 @@
-# 🎮 CheatCode - Code Snippet Manager
+# 🐍 CheatCode - Backend
 
-A full-stack code reference application with retro terminal aesthetics. Store, search, and organize your frequently used code snippets across multiple programming languages and categories.
-
-![Tech Stack](https://img.shields.io/badge/React-18-61DAFB?logo=react)
-![Tech Stack](https://img.shields.io/badge/Flask-3.1-000000?logo=flask)
-![Tech Stack](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)
-![Tech Stack](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite)
-
-## ✨ Features
-
-- 🔐 **User Authentication** - Secure session-based auth with bcrypt
-- 📝 **Code Snippet Management** - Create, edit, delete, and copy code examples
-- 🔍 **Advanced Filtering** - Filter by language, category, or search text
-- 🎨 **Multiple Themes** - Wargames (terminal green), Boutique (modern pink/purple), Apple II GS (classic Mac)
-- 📊 **Metrics Dashboard** - Live stats and system monitoring
-- 💾 **Database Persistence** - SQLite for development, easy PostgreSQL migration
-- 🛠️ **Dev Tools** - Built-in database management utilities
-
-## 🏗️ Project Structure
-
-```
-cheat-code-app/
-├── client/              # React + Vite frontend
-│   ├── src/
-│   │   ├── components/  # Reusable React components
-│   │   ├── pages/       # Page-level components
-│   │   ├── providers/   # Context providers (Auth)
-│   │   ├── hooks/       # Custom React hooks
-│   │   └── routes.jsx   # React Router configuration
-│   ├── public/styles/   # Theme CSS files
-│   └── vite.config.js   # Vite + proxy config
-│
-└── server/              # Flask backend
-    ├── app/
-    │   ├── models.py    # SQLAlchemy models
-    │   ├── routes.py    # API endpoints
-    │   ├── config.py    # Configuration
-    │   └── __init__.py  # Flask app factory
-    ├── migrations/      # Alembic database migrations
-    ├── run.py          # Application entry point
-    └── seed.py         # Database seeding script
-```
+Flask + SQLAlchemy backend API for the CheatCode snippet manager. Provides RESTful endpoints with session-based authentication.
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- npm or yarn
-
-### 1. Clone the Repository
-
 ```bash
-git clone <your-repo-url>
-cd cheat-code-app
-```
-
-### 2. Setup Backend
-
-```bash
-cd server
-
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -72,272 +15,680 @@ pip install -r requirements.txt
 # Initialize database
 flask db upgrade
 
-# Seed with example data (optional)
+# Seed with example data
 python seed.py
 
-# Start Flask server
+# Start server
 python run.py
 ```
 
-Backend runs on: **http://localhost:5555**
+Server runs on: **http://localhost:5555**
 
-### 3. Setup Frontend
+## 📦 Available Commands
 
-```bash
-cd client
+| Command | Description |
+|---------|-------------|
+| `python run.py` | Start Flask development server |
+| `flask db init` | Initialize migrations (first time only) |
+| `flask db migrate -m "message"` | Create new migration |
+| `flask db upgrade` | Apply migrations to database |
+| `flask db downgrade` | Rollback last migration |
+| `python seed.py` | Seed database with example data |
 
-# Install dependencies
-npm install
+## 🏗️ Project Structure
 
-# Start dev server
-npm run dev
+```
+server/
+├── app/
+│   ├── __init__.py          # Flask app factory (creates app)
+│   ├── config.py            # Configuration settings
+│   ├── extensions.py        # Extension instances (db, bcrypt, ma)
+│   ├── models.py            # SQLAlchemy models (User, Cheat, etc)
+│   ├── routes.py            # API endpoints (Resources)
+│   └── serializers.py       # Marshmallow schemas (unused)
+│
+├── migrations/              # Alembic migration files
+│   ├── versions/            # Individual migration scripts
+│   ├── alembic.ini          # Alembic configuration
+│   ├── env.py               # Migration environment
+│   └── script.py.mako       # Migration template
+│
+├── instance/                # Instance-specific files (gitignored)
+│   └── app.db               # SQLite database file
+│
+├── run.py                   # Application entry point
+├── seed.py                  # Database seeding script
+└── requirements.txt         # Python dependencies
 ```
 
-Frontend runs on: **http://localhost:5173**
+## 🗂️ Key Files Explained
 
-### 4. Login
+### `run.py` - Entry Point
+```python
+from app import create_app
 
-**Default credentials** (if you ran seed.py):
-- Email: `josh@josh.com`
-- Password: `1111`
+app = create_app()
 
-Or create a new account at `/signup`
-
-## 📚 Tech Stack
-
-### Frontend
-- **React 18** - UI framework
-- **Vite** - Build tool and dev server
-- **React Router 6** - Client-side routing
-- **Lucide React** - Icon library
-- **Context API** - State management
-
-### Backend
-- **Flask 3.1** - Web framework
-- **Flask-RESTful** - REST API
-- **SQLAlchemy** - ORM
-- **Flask-Migrate** - Database migrations
-- **Flask-Bcrypt** - Password hashing
-- **Flask-CORS** - Cross-origin requests
-
-### Database
-- **SQLite** - Development database
-- Easy migration to PostgreSQL for production
-
-## 🎨 Available Themes
-
-Switch themes in the navbar:
-
-- **Wargames** - 1980s terminal green aesthetic
-- **Boutique** - Modern pink/purple design
-- **Apple II GS** - Classic 1995 Mac GUI with rainbow stripes
-
-## 📖 API Endpoints
-
-### Authentication
-- `POST /api/signup` - Create new account
-- `POST /api/login` - Authenticate user
-- `POST /api/logout` - End session
-- `GET /api/check_session` - Verify session + load user data
-
-### Cheats
-- `GET /api/cheats` - List all cheats (with optional filters)
-- `POST /api/cheats` - Create new cheat
-- `PATCH /api/cheats/:id` - Update cheat
-- `DELETE /api/cheats/:id` - Delete cheat
-
-### Reference Data
-- `GET /api/languages` - List all languages
-- `GET /api/categories` - List all categories
-
-### Dev Tools
-- `POST /api/dev-tools` - Execute database commands (dev only)
-
-## 🗂️ Database Models
-
-### User
-- Stores user accounts with bcrypt-hashed passwords
-- One-to-many relationship with Cheats
-
-### Language
-- Programming languages (JavaScript, Python, SQL, etc.)
-- Seeded with 10 common languages
-
-### Category
-- Code categories (Arrays, Functions, Loops, etc.)
-- Seeded with 11 common categories
-
-### Cheat
-- Individual code snippets
-- Belongs to User, Language, and Category
-- Stores title, code, notes, timestamps
-
-## 🛠️ Development
-
-### Database Migrations
-
-```bash
-cd server
-
-# Create migration after model changes
-flask db migrate -m "description"
-
-# Apply migrations
-flask db upgrade
-
-# Rollback last migration
-flask db downgrade
+if __name__ == '__main__':
+    app.run(port=5555, debug=True)
 ```
-
-### Reseed Database
-
-```bash
-cd server
-python seed.py
-```
-
-### Frontend Dev Commands
-
-```bash
-cd client
-
-# Start dev server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Lint code
-npm run lint
-```
-
-### Backend Dev Tools
-
-Access at `/devtools` in the app:
-- Check database status
-- Delete database
-- Create/upgrade database
-- Run seed file
-- Generate seed from current data
-
-## 📦 Deployment
-
-### Backend (Flask)
-
-```bash
-# Install gunicorn
-pip install gunicorn
-
-# Run with gunicorn
-gunicorn -w 4 -b 0.0.0.0:5555 'app:create_app()'
-```
-
-### Frontend (React)
-
-```bash
-# Build static files
-npm run build
-
-# Serve with any static server
-# Output in: client/dist/
-```
-
-### Environment Variables
-
-Create `.env` file in server directory:
-
-```bash
-SECRET_KEY=your-secret-key-here
-DATABASE_URI=sqlite:///app.db  # or postgresql://...
-FLASK_ENV=production
-```
-
-## 🔒 Security Notes
-
-- Sessions use httpOnly cookies (XSS protection)
-- Passwords hashed with bcrypt
-- CORS configured for development (localhost:5173)
-- Update CORS origins for production
-- Change SECRET_KEY before deploying
-
-## 📝 Key Features Explained
-
-### The Refetch Pattern
-
-Instead of complex local state updates, the app refetches data after mutations:
-
-```javascript
-// After create/update/delete:
-await checkSession()  // Reload all data
-```
-
-**Trade-offs:**
-- ✅ Simple, consistent code
-- ✅ Guaranteed server-client sync
-- ✅ No manual state management bugs
-- ⚠️ Extra API call (~50-100ms)
-
-### Dual Data Grouping
-
-Cheats are stored in TWO places in state:
-- `user.languages[].cheats[]` - For language filtering
-- `user.categories[].cheats[]` - For category filtering
-
-This enables fast filtering without additional API calls.
-
-## 🐛 Troubleshooting
-
-**Frontend won't start:**
-- Check Node version: `node --version` (needs 18+)
-- Delete node_modules and reinstall: `rm -rf node_modules && npm install`
-
-**Backend errors:**
-- Check Python version: `python --version` (needs 3.11+)
-- Activate virtual environment
-- Verify database exists: `ls server/instance/app.db`
-
-**CORS errors:**
-- Verify Vite proxy in `client/vite.config.js`
-- Check Flask CORS origins in `server/app/__init__.py`
-
-**Session not persisting:**
-- Check cookies in browser dev tools
-- Verify `credentials: 'include'` in fetch calls
-
-## 📄 Documentation
-
-- **[Complete App Documentation](./APP_DOCUMENTATION.md)** - Full technical docs (3,383 lines!)
-- **[Client README](./client/README.md)** - Frontend-specific details
-- **[Apple II GS Theme](./APPLE2GS_THEME_INSTALL.md)** - Classic Mac theme guide
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature-name`
-3. Commit changes: `git commit -m 'Add feature'`
-4. Push to branch: `git push origin feature-name`
-5. Open pull request
-
-## 📜 License
-
-MIT License - See LICENSE file for details
-
-## 👤 Author
-
-Built by Josh - Bootcamp graduate learning full-stack development
-
-## 🙏 Acknowledgments
-
-- Inspired by retro terminal aesthetics
-- Apple II GS rainbow stripe
-- 1980s hacker movie UIs
-- All the developers who asked "do you have a cheat sheet for that?"
+**What it does:**
+- Creates app using factory pattern
+- Starts development server on port 5555
+- Enables debug mode for auto-reload
 
 ---
 
-**Happy Coding!** 🚀
+### `app/__init__.py` - App Factory
+**What it does:**
+- Creates Flask app instance
+- Loads configuration from `Config` class
+- Initializes extensions (db, bcrypt, migrations, CORS)
+- Registers API routes
+- Returns configured app
 
-For detailed setup instructions, see individual READMEs in `/client` and `/server` directories.
+**Key pattern:** Factory allows multiple apps with different configs
+
+---
+
+### `app/config.py` - Configuration
+```python
+class Config:
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///app.db'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE = False      # Set True in production
+    SESSION_COOKIE_HTTPONLY = True
+```
+**What to change for production:**
+- Set `SECRET_KEY` environment variable
+- Change `DATABASE_URI` to PostgreSQL
+- Set `SESSION_COOKIE_SECURE = True`
+
+---
+
+### `app/extensions.py` - Extension Instances
+```python
+db = SQLAlchemy()      # Database ORM
+bcrypt = Bcrypt()      # Password hashing
+ma = Marshmallow()     # Serialization (unused)
+```
+**Why here?** Avoids circular imports
+
+---
+
+### `app/models.py` - Database Models
+
+**4 Models:**
+
+1. **User** - User accounts
+   ```python
+   id, name, email, _password_hash
+   Relationships: cheats (one-to-many)
+   ```
+
+2. **Language** - Programming languages
+   ```python
+   id, name
+   Relationships: cheats (one-to-many)
+   ```
+
+3. **Category** - Code categories
+   ```python
+   id, name
+   Relationships: cheats (one-to-many)
+   ```
+
+4. **Cheat** - Code snippets
+   ```python
+   id, title, code, notes, created_at, updated_at
+   Foreign Keys: user_id, language_id, category_id
+   Relationships: user, language, category (many-to-one)
+   ```
+
+---
+
+### `app/routes.py` - API Endpoints
+
+**12 Flask-RESTful Resources:**
+
+#### Authentication (3)
+- `POST /api/signup` - Create account
+- `POST /api/login` - Authenticate user
+- `POST /api/logout` - End session
+
+#### Session (1)
+- `GET /api/check_session` - Verify auth + load user data
+
+#### Cheats (4)
+- `GET /api/cheats` - List all cheats (unused - data from check_session)
+- `POST /api/cheats` - Create cheat
+- `PATCH /api/cheats/<id>` - Update cheat
+- `DELETE /api/cheats/<id>` - Delete cheat
+
+#### Reference Data (2)
+- `GET /api/languages` - List languages
+- `GET /api/categories` - List categories
+
+#### Dev Tools (1)
+- `POST /api/dev-tools` - Database management commands
+
+---
+
+### `seed.py` - Database Seeding
+
+**What it creates:**
+- 1 user: Josh (josh@josh.com / 1111)
+- 10 languages: JavaScript, Python, SQL, React, etc.
+- 11 categories: Arrays, Functions, Loops, etc.
+- 40+ example cheats
+
+**Usage:**
+```bash
+python seed.py  # Clears and reseeds database
+```
+
+## 📖 API Documentation
+
+### Authentication Flow
+
+**1. Signup**
+```bash
+POST /api/signup
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "securepass"
+}
+
+# Response: 201 Created
+{
+  "id": 1,
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+```
+
+**2. Login**
+```bash
+POST /api/login
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "securepass"
+}
+
+# Response: 200 OK + Session cookie set
+{
+  "id": 1,
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+```
+
+**3. Check Session**
+```bash
+GET /api/check_session
+
+# Response: 200 OK
+{
+  "logged_in": true,
+  "user": {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "languages": [
+      {
+        "id": 1,
+        "name": "JavaScript",
+        "cheats": [...]
+      }
+    ],
+    "categories": [
+      {
+        "id": 1,
+        "name": "Arrays",
+        "cheats": [...]
+      }
+    ]
+  }
+}
+```
+
+---
+
+### CRUD Operations
+
+**Create Cheat**
+```bash
+POST /api/cheats
+Content-Type: application/json
+
+{
+  "title": "Array Sort",
+  "code": "arr.sort((a, b) => a - b)",
+  "notes": "Numeric sort",
+  "language_id": 1,
+  "category_id": 2,
+  "user_id": 1
+}
+
+# Response: 201 Created
+{
+  "id": 42,
+  "title": "Array Sort",
+  "code": "arr.sort((a, b) => a - b)",
+  "notes": "Numeric sort",
+  "language": { "id": 1, "name": "JavaScript" },
+  "category": { "id": 2, "name": "Arrays" },
+  "created_at": "2024-12-05T10:30:00",
+  "updated_at": "2024-12-05T10:30:00"
+}
+```
+
+**Update Cheat**
+```bash
+PATCH /api/cheats/42
+Content-Type: application/json
+
+{
+  "title": "Updated Title",
+  "code": "new code"
+}
+
+# Response: 200 OK
+{
+  "id": 42,
+  "title": "Updated Title",
+  "code": "new code",
+  ...
+}
+```
+
+**Delete Cheat**
+```bash
+DELETE /api/cheats/42
+
+# Response: 200 OK
+{
+  "message": "Cheat deleted successfully"
+}
+```
+
+## 🗄️ Database Management
+
+### Migrations Workflow
+
+**1. After changing models:**
+```bash
+flask db migrate -m "Add new field to User model"
+```
+This creates a new migration file in `migrations/versions/`
+
+**2. Review the migration:**
+```bash
+cat migrations/versions/xxxxx_add_new_field.py
+```
+
+**3. Apply migration:**
+```bash
+flask db upgrade
+```
+
+**4. Rollback if needed:**
+```bash
+flask db downgrade
+```
+
+---
+
+### Common Migration Commands
+
+```bash
+# Check current migration status
+flask db current
+
+# Show migration history
+flask db history
+
+# Upgrade to specific version
+flask db upgrade <revision>
+
+# Downgrade to specific version
+flask db downgrade <revision>
+
+# Generate SQL without applying
+flask db upgrade --sql
+```
+
+---
+
+### Reset Database
+
+```bash
+# Delete database
+rm instance/app.db
+
+# Recreate from migrations
+flask db upgrade
+
+# Reseed
+python seed.py
+```
+
+## 🔐 Authentication System
+
+### Session-Based Auth
+
+**How it works:**
+1. User logs in with email/password
+2. Server verifies with bcrypt
+3. Server sets `session['user_id']`
+4. Browser stores session cookie
+5. Browser sends cookie with each request
+6. Server verifies session
+
+**Security features:**
+- Passwords hashed with bcrypt (never stored plain text)
+- httpOnly cookies (JavaScript can't access)
+- CSRF protection via SameSite=Lax
+- Session cookie expires when browser closes
+
+---
+
+### Password Hashing
+
+**In User model:**
+```python
+@hybrid_property
+def password(self):
+    raise AttributeError('Password is not readable')
+
+@password.setter
+def password(self, password):
+    self._password_hash = bcrypt.generate_password_hash(
+        password.encode('utf-8')
+    ).decode('utf-8')
+
+def authenticate(self, password):
+    return bcrypt.check_password_hash(
+        self._password_hash, password.encode('utf-8')
+    )
+```
+
+**How it works:**
+- `generate_password_hash()` - Creates one-way hash
+- `check_password_hash()` - Verifies password against hash
+- Original password is never stored
+
+## 🛠️ Development
+
+### Adding a New Endpoint
+
+**1. Create Resource class in `routes.py`:**
+```python
+class MyNewResource(Resource):
+    def get(self):
+        # Handle GET requests
+        return {'message': 'Hello'}
+    
+    def post(self):
+        # Handle POST requests
+        data = request.get_json()
+        return {'received': data}, 201
+```
+
+**2. Register in `initialize_routes()`:**
+```python
+def initialize_routes(api):
+    # ... existing routes ...
+    api.add_resource(MyNewResource, '/api/mynew')
+```
+
+**3. Test:**
+```bash
+curl http://localhost:5555/api/mynew
+```
+
+---
+
+### Adding a New Model
+
+**1. Create model in `models.py`:**
+```python
+class MyModel(db.Model):
+    __tablename__ = 'my_models'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+```
+
+**2. Create migration:**
+```bash
+flask db migrate -m "Add MyModel table"
+```
+
+**3. Apply migration:**
+```bash
+flask db upgrade
+```
+
+**4. Use in routes:**
+```python
+from app.models import MyModel
+
+class MyModelResource(Resource):
+    def get(self):
+        items = MyModel.query.all()
+        return [{'id': i.id, 'name': i.name} for i in items]
+```
+
+## 🔌 CORS Configuration
+
+**Current setup (development):**
+```python
+CORS(app,
+    resources={r"/*": {"origins": "http://localhost:5173"}},
+    supports_credentials=True,
+    allow_headers=["Content-Type"],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+)
+```
+
+**For production:**
+```python
+CORS(app,
+    resources={r"/*": {"origins": "https://yourdomain.com"}},
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+)
+```
+
+## 📦 Dependencies
+
+**Core:**
+- `Flask` - Web framework
+- `Flask-SQLAlchemy` - ORM
+- `Flask-Migrate` - Database migrations
+- `Flask-RESTful` - REST API framework
+- `Flask-Bcrypt` - Password hashing
+- `Flask-CORS` - Cross-origin requests
+
+**Database:**
+- `SQLAlchemy` - SQL toolkit
+- `Alembic` - Migration tool (via Flask-Migrate)
+
+**Utilities:**
+- `python-dotenv` - Environment variables (optional)
+
+## 🚀 Production Deployment
+
+### Using Gunicorn
+
+```bash
+# Install
+pip install gunicorn
+
+# Run
+gunicorn -w 4 -b 0.0.0.0:5555 'app:create_app()'
+```
+
+**Gunicorn options:**
+- `-w 4` - 4 worker processes
+- `-b 0.0.0.0:5555` - Bind to all interfaces on port 5555
+- `--reload` - Auto-reload on code changes (dev only)
+
+---
+
+### Environment Variables
+
+Create `.env` file:
+```bash
+SECRET_KEY=your-production-secret-key-here
+DATABASE_URI=postgresql://user:pass@localhost/dbname
+FLASK_ENV=production
+```
+
+Load with python-dotenv:
+```python
+from dotenv import load_dotenv
+load_dotenv()
+```
+
+---
+
+### PostgreSQL Migration
+
+**1. Install psycopg2:**
+```bash
+pip install psycopg2-binary
+```
+
+**2. Update config.py:**
+```python
+SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URI') or 'sqlite:///app.db'
+```
+
+**3. Export data (optional):**
+```bash
+# Via dev-tools in app, or manually
+```
+
+**4. Set environment variable:**
+```bash
+export DATABASE_URI="postgresql://user:pass@localhost/dbname"
+```
+
+**5. Run migrations:**
+```bash
+flask db upgrade
+python seed.py  # If needed
+```
+
+## 🐛 Troubleshooting
+
+**"No module named 'app'"**
+```bash
+# Make sure you're in the server directory
+cd server
+python run.py
+```
+
+**"Cannot import name 'db' from 'app.extensions'"**
+- Check `extensions.py` exists
+- Verify `db = SQLAlchemy()` is defined
+- Restart Python interpreter
+
+**"Database locked" error**
+- Close all database connections
+- Delete `instance/app.db-journal` if it exists
+- Restart server
+
+**CORS errors**
+- Verify frontend URL in `CORS(origins=...)`
+- Check `credentials: 'include'` in frontend fetch calls
+- Clear browser cache
+
+**Session not persisting**
+- Check `SESSION_COOKIE_SAMESITE` setting
+- Verify `credentials: 'include'` in fetch
+- Check browser cookie storage (dev tools)
+
+**Migration errors**
+- Delete `migrations/` folder
+- Run `flask db init` to restart
+- Run `flask db migrate` again
+
+## 📚 Learn More
+
+- [Flask Documentation](https://flask.palletsprojects.com)
+- [SQLAlchemy Docs](https://docs.sqlalchemy.org)
+- [Flask-RESTful](https://flask-restful.readthedocs.io)
+- [Alembic Migrations](https://alembic.sqlalchemy.org)
+- [Flask-Migrate](https://flask-migrate.readthedocs.io)
+
+## 🎓 Code Patterns
+
+### Resource Pattern (Flask-RESTful)
+```python
+class MyResource(Resource):
+    def get(self):
+        return {'data': 'GET response'}
+    
+    def post(self):
+        data = request.get_json()
+        return {'received': data}, 201
+    
+    def patch(self, id):
+        item = MyModel.query.get_or_404(id)
+        # Update logic
+        return {'updated': item.id}
+    
+    def delete(self, id):
+        item = MyModel.query.get_or_404(id)
+        db.session.delete(item)
+        db.session.commit()
+        return {'message': 'Deleted'}
+```
+
+### Session Check Pattern
+```python
+def get(self):
+    user_id = session.get('user_id')
+    if not user_id:
+        return {'error': 'Not authenticated'}, 401
+    
+    user = User.query.get(user_id)
+    return {'user': user.to_dict()}
+```
+
+### Query Pattern
+```python
+# Get all
+items = Model.query.all()
+
+# Get by ID
+item = Model.query.get(id)
+item = Model.query.get_or_404(id)  # Returns 404 if not found
+
+# Filter
+items = Model.query.filter_by(name='value').all()
+items = Model.query.filter(Model.age > 18).all()
+
+# Order
+items = Model.query.order_by(Model.created_at.desc()).all()
+
+# Limit
+items = Model.query.limit(10).all()
+```
+
+---
+
+**Questions?** Check the [main README](../README.md) or [full documentation](../APP_DOCUMENTATION.md).
