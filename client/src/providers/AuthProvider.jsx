@@ -8,9 +8,8 @@ export function AuthProvider({ children }) {
   const [allCategories, setAllCategories] = useState([]);
 
   const loggedIn = Boolean(user);
-  const API_URL = import.meta.env.PROD
-    ? "/api" // Production: same domain
-    : "http://localhost:5555/api";
+  const API_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:5555/api";
 
   useEffect(() => {
     checkSession();

@@ -1,0 +1,12 @@
+[data-theme="wargames"] {
+  --bg-primary:#000; --bg-secondary:#0a0a0a; --bg-tertiary:#1a1a1a;
+  --text-primary:#33aa33; --text-secondary:#66ff66; --text-muted:rgba(51,170,51,.7);
+  --border-primary:rgba(51,170,51,.33); --border-secondary:rgba(51,170,51,.2); --border-solid:#33aa33;
+  --shadow-text:0 0 5px #33aa33; --shadow-glow:0 0 10px #33aa33; --shadow-button:0 0 8px #33aa33;
+  --font-primary:"Courier New",Courier,monospace; --font-size-base:13px; --letter-spacing:.5px; --line-height:1.3;
+  --transition-speed:.15s;
+}
+[data-theme="wargames"] .app-container { animation:flicker var(--transition-speed) infinite; }
+[data-theme="wargames"] .scanline { background:linear-gradient(transparent 50%,rgba(0,0,0,.25) 50%); background-size:100% 4px; }
+[data-theme="wargames"] .pulse { animation:pulse 2s infinite; }
+[data-theme="wargames"] .blink { animation:blink 1s infinite; }
