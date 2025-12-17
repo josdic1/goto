@@ -1,4 +1,4 @@
-import { Edit, Trash2, Check } from "lucide-react";
+import { Edit, Trash2, Check, View } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useState } from "react";
@@ -69,6 +69,10 @@ export function CheatItem({ cheat, language, category }) {
 
       {/* 4. CONTROL BUTTONS */}
       <div className="terminal-controls">
+         <button onClick={() => navigate(`/cheats/${cheat.id}`)} className="control-btn">
+          <View size={14} />
+          VIEW
+        </button>
         <button onClick={handleEdit} className="control-btn">
           <Edit size={14} />
           EDIT

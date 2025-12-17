@@ -1,83 +1,85 @@
-from app.extensions import db, bcrypt
-from sqlalchemy.ext.hybrid import hybrid_property
+from .extensions import db, bcrypt
 from datetime import datetime, timezone
-from app.extensions import db, bcrypt, ma
-
-
-################# MODELS #################
+from sqlalchemy.ext.associationproxy import association_proxy
 
 class User(db.Model):
     __tablename__ = 'users'
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    _password_hash = db.Column(db.String(128), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    _password_hash = db.Column(db.String(128))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    cheats = db.relationship('Cheat', backref='user', lazy=True, cascade='all, delete-orphan')
+    # Relationship to cheats
+    cheats = db.relationship('Cheat', back_populates='user', cascade='all, delete-orphan')
     
-    def __init__(self, name, email, password):
-        self.name = name
-        self.email = email
+    # Association proxy to get categories through cheats
+    categories = association_proxy('cheats', 'category',
+                                   creator=lambda category_obj: Cheat(category=category_obj))
+    languages = association_proxy('cheats', 'language',
+                                   creator=lambda language_obj: Cheat(language=language_obj))
+    
+    @property
+    def password(self):
+        raise AttributeError('password is not readable')
+    
+    @password.setter
+    def password(self, password):
         self._password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
     
-    def authenticate(self, password):
+    def check_password(self, password):
         return bcrypt.check_password_hash(self._password_hash, password)
-    
-    def __repr__(self):
-        return f'<User {self.name}>'
 
 
 class Language(db.Model):
     __tablename__ = 'languages'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False, unique=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    cheats = db.relationship('Cheat', backref='language', lazy=True)
+    # Relationship to cheats
+    cheats = db.relationship('Cheat', back_populates='language')
     
-    def __init__(self, name):
-        self.name = name
-    
-    def __repr__(self):
-        return f'<Language {self.name}>'
-
+    # Association proxy to get users through cheats
+    users = association_proxy('cheats', 'user',
+                              creator=lambda user_obj: Cheat(user=user_obj))
 
 class Category(db.Model):
     __tablename__ = 'categories'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False, unique=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    cheats = db.relationship('Cheat', backref='category', lazy=True)
+    # Relationship to cheats
+    cheats = db.relationship('Cheat', back_populates='category')
     
-    def __init__(self, name):
-        self.name = name
-    
-    def __repr__(self):
-        return f'<Category {self.name}>'
+    # Association proxy to get users through cheats
+    users = association_proxy('cheats', 'user',
+                              creator=lambda user_obj: Cheat(user=user_obj))
 
 
 class Cheat(db.Model):
     __tablename__ = 'cheats'
     
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
     code = db.Column(db.Text, nullable=False)
-    notes = db.Column(db.Text(100), nullable=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    language_id = db.Column(db.Integer, db.ForeignKey('languages.id'), nullable=False)
-    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
+    notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    def __init__(self, title, code, user_id, language_id, category_id, notes=None):
-        self.title = title
-        self.code = code
-        self.notes = notes
-        self.user_id = user_id
-        self.language_id = language_id
-        self.category_id = category_id
+    # Foreign keys
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
+    language_id = db.Column(db.Integer, db.ForeignKey('languages.id'), nullable=False)
     
-    def __repr__(self):
-        return f'<Cheat {self.title}>'
+    # Relationships back to parents
+    user = db.relationship('User', back_populates='cheats')
+    category = db.relationship('Category', back_populates='cheats')
+    language = db.relationship('Language', back_populates='cheats')

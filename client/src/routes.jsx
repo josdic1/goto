@@ -1,6 +1,7 @@
 import App from './App.jsx';
 import { CheatForm } from './components/CheatForm.jsx';
 import { CheatCard } from './components/CheatCard.jsx';
+import { CheatView } from './pages/CheatView.jsx';
 import { DevTools } from './pages/DevTools.jsx';
 import { ErrorPage } from './pages/ErrorPage.jsx';
 import { Generator } from './pages/Generator.jsx';
@@ -44,7 +45,7 @@ export const routes = [
             },
             {
             path: '/cheats/:id',
-                element: <ProtectedRoute><CheatCard /></ProtectedRoute>
+                element: <ProtectedRoute><CheatView /></ProtectedRoute>
             },
             {
                 path: '/signup',

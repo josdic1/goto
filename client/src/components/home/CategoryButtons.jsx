@@ -1,4 +1,9 @@
 export function CategoryButtons({ categories, selectedCategory, onSelectCategory }) {
+
+  if (!categories?.length) {
+    return null;
+  }
+
   return (
     <div className="filter-section">
       <label className="filter-label">CATEGORIES</label>
@@ -16,12 +21,10 @@ export function CategoryButtons({ categories, selectedCategory, onSelectCategory
             className={`category-btn ${selectedCategory === cat.id ? 'active' : ''}`}
           >
             {cat.name}
-            <span className="category-count">{cat.cheats.length}</span>
+            <span className="category-count">{cat.cheats?.length ?? 0}</span>
           </button>
         ))}
       </div>
     </div>
   );
 }
-
-

@@ -1,7 +1,7 @@
 // HomePage.jsx
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { FileCodeCorner } from "lucide-react";
+import { FileCodeCorner, ArrowUp } from "lucide-react";
 import { MetricsPanel } from "../components/home/MetricsPanel";
 import { FilterPanel } from "../components/home/FilterPanel";
 
@@ -16,6 +16,13 @@ export function HomePage() {
     lang.cheats.map(cheat => ({ ...cheat, language: { id: lang.id, name: lang.name } }))
   );
 
+  const scrollToTop = () => {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth' 
+    });
+};
+
   return (
     <div className="cheat-browser-page">
       <MetricsPanel 
@@ -29,10 +36,16 @@ export function HomePage() {
         languages={user.languages}
         categories={user.categories}
       />
-
-      <button 
+     <button 
+  onClick={scrollToTop} 
+  className="floating-scroll-btn"  // ← CHANGE THIS
+  title="Scroll to Top"
+>
+  <ArrowUp size={24} /> 
+</button>
+<button 
         onClick={() => navigate('/cheats')}
-        className="floating-cheats-btn"
+        className="floating-cheats-btn" 
         title="View All Cheats"
       >
         <FileCodeCorner size={24} />

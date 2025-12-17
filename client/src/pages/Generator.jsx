@@ -1,4 +1,4 @@
-// Generator.jsx - COMPLETE WITH ASSOCIATION PROXIES (FIXED, DROP-IN)
+// Generator.jsx - FULLY FIXED VERSION
 import { useState } from "react";
 import { Code, Database, ArrowLeft, Copy, Plus, Trash2, Settings, HelpCircle } from "lucide-react";
 
@@ -8,6 +8,7 @@ export function Generator() {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [questionnaireHistory, setQuestionnaireHistory] = useState([]);
   const [questionnaireData, setQuestionnaireData] = useState({
     table1: "",
     table2: "",
@@ -29,6 +30,7 @@ export function Generator() {
     addPagination: true,
     defaultPageSize: 20,
     useAssociationProxy: false,
+    cascadeDelete: true, // NEW: Add cascade delete by default
   });
 
   const updateOption = (key, value) => {
@@ -44,15 +46,28 @@ export function Generator() {
       child: "children",
       mouse: "mice",
       category: "categories",
+      status: "statuses",
+      analysis: "analyses",
+      basis: "bases",
+      crisis: "crises",
+      datum: "data",
+      medium: "media",
+      quiz: "quizzes",
+      ox: "oxen",
+      foot: "feet",
+      tooth: "teeth",
+      goose: "geese",
     };
 
     if (irregulars[lower]) return irregulars[lower];
     if (lower.match(/[^aeiou]y$/)) return lower.slice(0, -1) + "ies";
     if (lower.match(/(s|ss|sh|ch|x|z)$/)) return lower + "es";
+    if (lower.match(/[^aeiou]o$/)) return lower + "es";
+    if (lower.match(/(f|fe)$/)) return lower.replace(/(f|fe)$/, "ves");
     return lower + "s";
   };
 
-  // QUESTIONNAIRE LOGIC (unchanged)
+  // QUESTIONNAIRE LOGIC START --------------------------------------------------------------------------------------------------
   const startQuestionnaire = () => {
     setQuestionnaireData({
       table1: "",
@@ -60,56 +75,101 @@ export function Generator() {
       answers: {},
     });
     setCurrentQuestion(0);
+    setQuestionnaireHistory([]);
     setShowQuestionnaire(true);
   };
 
+  // Fixed and clarified questions
   const questions = [
     {
       id: "table_names",
-      question: "What are the two tables you want to connect?",
+      question: "Step 1: What two tables are we connecting?",
       type: "input",
       fields: ["table1", "table2"],
-      placeholder: ["user", "cheat"],
+      placeholder: ["user", "post"],
     },
     {
-      id: "who_creates",
-      question: (data) => `Who creates a ${data.table2}?`,
+      id: "cardinality_a_to_b",
+      question: (data) => `Q1: How many ${pluralize(data.table2)} can ONE ${data.table1} have?`,
       type: "choice",
       choices: (data) => [
-        { value: "table1", label: `A ${data.table1} creates it` },
-        { value: "table2", label: `A ${data.table2} creates it` },
-        { value: "both", label: "Both can create it" },
-        { value: "neither", label: "Neither (they reference each other indirectly)" },
+        { value: "one", label: `ONE ${data.table2}` },
+        { value: "many", label: `MANY ${pluralize(data.table2)}` },
       ],
+      explanation: (data) => `Think: Can one ${data.table1} be linked to multiple ${pluralize(data.table2)}?`,
     },
     {
-      id: "can_exist_without",
-      question: (data) => `Can a ${data.table2} exist without a ${data.table1}?`,
-      type: "boolean",
-      showIf: (data) => data.answers.who_creates === "table1",
+      id: "cardinality_b_to_a",
+      question: (data) => `Q2: How many ${pluralize(data.table1)} can ONE ${data.table2} belong to?`,
+      type: "choice",
+      choices: (data) => [
+        { value: "one", label: `ONE ${data.table1}` },
+        { value: "many", label: `MANY ${pluralize(data.table1)}` },
+      ],
+      explanation: (data) => `Think: Can one ${data.table2} be linked to multiple ${pluralize(data.table1)}?`,
     },
     {
-      id: "belongs_to",
-      question: (data) => `Does a ${data.table1} need a ${data.table2}_id?`,
+      id: "dependency",
+      question: (data) => {
+        // Determine which table gets the FK
+        const aToB = data.answers.cardinality_a_to_b;
+        const bToA = data.answers.cardinality_b_to_a;
+        
+        if (aToB === "many" && bToA === "one") {
+          // 1:M (A->B), FK on B
+          return `Q3: Can a ${data.table2} exist without being linked to a ${data.table1}?`;
+        } else if (aToB === "one" && bToA === "one") {
+          // 1:1 (A->B), FK on B
+          return `Q3: Can a ${data.table2} exist without being linked to a ${data.table1}?`;
+        } else if (aToB === "one" && bToA === "many") {
+          // M:1 (B->A), FK on A
+          return `Q3: Can a ${data.table1} exist without being linked to a ${data.table2}?`;
+        }
+        return "Q3: Is this relationship required?";
+      },
       type: "boolean",
-      explanation: (data) => `In other words: Does a ${data.table1} BELONG TO a ${data.table2}?`,
-    },
-    {
-      id: "uses",
-      question: (data) => `Does the ${data.table2} USE/REFERENCE a ${data.table1}?`,
-      type: "boolean",
-      explanation: (data) => `Example: A cheat USES a language (JavaScript, Python, etc.)`,
+      explanation: (data) => {
+        const aToB = data.answers.cardinality_a_to_b;
+        const bToA = data.answers.cardinality_b_to_a;
+        
+        if (aToB === "many" && bToA === "one") {
+          return `If NO, then ${data.table2}.${data.table1}_id will be required (nullable=False)`;
+        } else if (aToB === "one" && bToA === "one") {
+          return `If NO, then ${data.table2}.${data.table1}_id will be required (nullable=False)`;
+        } else if (aToB === "one" && bToA === "many") {
+          return `If NO, then ${data.table1}.${data.table2}_id will be required (nullable=False)`;
+        }
+        return "";
+      },
+      showIf: (data) => {
+        const aToB = data.answers.cardinality_a_to_b;
+        const bToA = data.answers.cardinality_b_to_a;
+        // Show when there's a FK (not M:M)
+        return !(aToB === "many" && bToA === "many");
+      }
     },
   ];
 
   const handleQuestionnaireAnswer = (value) => {
     const question = questions[currentQuestion];
-
     let updatedData = { ...questionnaireData };
 
     if (question.id === "table_names") {
-      updatedData.table1 = value.table1.toLowerCase();
-      updatedData.table2 = value.table2.toLowerCase();
+      const t1 = value.table1.trim().toLowerCase();
+      const t2 = value.table2.trim().toLowerCase();
+      
+      if (!t1 || !t2) {
+        alert("Please enter both table names");
+        return;
+      }
+      
+      if (t1 === t2) {
+        alert("Table names must be different");
+        return;
+      }
+      
+      updatedData.table1 = t1;
+      updatedData.table2 = t2;
     } else {
       updatedData.answers = {
         ...updatedData.answers,
@@ -118,9 +178,11 @@ export function Generator() {
     }
 
     setQuestionnaireData(updatedData);
+    setQuestionnaireHistory([...questionnaireHistory, currentQuestion]);
 
     let nextQuestion = currentQuestion + 1;
 
+    // Skip questions not relevant based on showIf logic
     while (nextQuestion < questions.length) {
       const nextQ = questions[nextQuestion];
       if (nextQ.showIf && !nextQ.showIf(updatedData)) {
@@ -131,9 +193,17 @@ export function Generator() {
     }
 
     if (nextQuestion >= questions.length) {
-      setTimeout(() => analyzeQuestionnaireResults(updatedData), 100);
+      analyzeQuestionnaireResults(updatedData);
     } else {
       setCurrentQuestion(nextQuestion);
+    }
+  };
+
+  const handleQuestionnairePrevious = () => {
+    if (questionnaireHistory.length > 0) {
+      const previousQuestion = questionnaireHistory[questionnaireHistory.length - 1];
+      setQuestionnaireHistory(questionnaireHistory.slice(0, -1));
+      setCurrentQuestion(previousQuestion);
     }
   };
 
@@ -141,68 +211,112 @@ export function Generator() {
     const { table1, table2, answers } = data;
 
     let recommendation = {
-      table1Owns: false,
-      table2Owns: false,
-      manyToMany: false,
+      table1OwnsMany: false, // 1:M, FK on B
+      table1OwnsOne: false,  // 1:1, FK on B, unique=True
+      manyToMany: false,     // M:M, Junction table
+      table2OwnsMany: false, // M:1 (Reversed 1:M), FK on A
+      nullable: answers.dependency === true, // TRUE means "can exist alone" so nullable=True
     };
 
-    if (answers.who_creates === "table1" && answers.can_exist_without === false) {
-      recommendation.table1Owns = true;
-    } else if (answers.who_creates === "table2") {
-      recommendation.table2Owns = true;
-    } else if (answers.who_creates === "both" || answers.who_creates === "neither") {
+    // Case M:M
+    if (answers.cardinality_a_to_b === "many" && answers.cardinality_b_to_a === "many") {
       recommendation.manyToMany = true;
+    } 
+    // Case 1:M (A is owner)
+    else if (answers.cardinality_a_to_b === "many" && answers.cardinality_b_to_a === "one") {
+      recommendation.table1OwnsMany = true;
+    } 
+    // Case 1:1 (A is owner)
+    else if (answers.cardinality_a_to_b === "one" && answers.cardinality_b_to_a === "one") {
+      recommendation.table1OwnsOne = true;
     }
-
-    if (answers.uses === true && !recommendation.table1Owns) {
-      recommendation.table1Owns = true;
+    // Case M:1 (B is owner)
+    else if (answers.cardinality_a_to_b === "one" && answers.cardinality_b_to_a === "many") {
+      recommendation.table2OwnsMany = true;
     }
-
+    
     showQuestionnaireResults(recommendation);
   };
 
-  const showQuestionnaireResults = (rec) => {
+  const ResultsModal = ({ recommendation, onConfirm, onCancel }) => {
     const { table1, table2 } = questionnaireData;
     const table1Plural = pluralize(table1);
     const table2Plural = pluralize(table2);
+    const isRequired = !recommendation.nullable;
+    
+    let type = '';
+    let implementation = '';
+    let dependency = '';
 
-    let result = `📋 RECOMMENDATION:\n\n`;
-
-    if (rec.table1Owns) {
-      result += `✅ ${table1.toUpperCase()} "has many" ${table2}\n\n`;
-      result += `What gets created:\n`;
-      result += `  • ${table1} gets: ${table2Plural} (relationship)\n`;
-      result += `  • ${table2} gets: ${table1}_id (FK) + ${table1} (relationship)\n\n`;
-      result += `This means:\n`;
-      result += `  • A ${table1} can have multiple ${table2Plural}\n`;
-      result += `  • Each ${table2} belongs to ONE ${table1}\n`;
-    } else if (rec.table2Owns) {
-      result += `✅ ${table2.toUpperCase()} "has many" ${table1}\n\n`;
-      result += `What gets created:\n`;
-      result += `  • ${table2} gets: ${table1Plural} (relationship)\n`;
-      result += `  • ${table1} gets: ${table2}_id (FK) + ${table2} (relationship)\n\n`;
-      result += `This means:\n`;
-      result += `  • A ${table2} can have multiple ${table1Plural}\n`;
-      result += `  • Each ${table1} belongs to ONE ${table2}\n`;
-    } else if (rec.manyToMany) {
+    if (recommendation.manyToMany) {
       const junction = [table1, table2].sort().join("_");
-      result += `✅ ${table1.toUpperCase()} and ${table2.toUpperCase()} are MANY-TO-MANY\n\n`;
-      result += `What gets created:\n`;
-      result += `  • Junction table: ${junction}\n`;
-      result += `  • ${table1} gets: ${table2Plural} (relationship through junction)\n`;
-      result += `  • ${table2} gets: ${table1Plural} (relationship through junction)\n\n`;
-      result += `This means:\n`;
-      result += `  • A ${table1} can have multiple ${table2Plural}\n`;
-      result += `  • A ${table2} can have multiple ${table1Plural}\n`;
+      type = "MANY-TO-MANY";
+      implementation = `Junction table **${junction}** will be created`;
+      dependency = "No foreign keys (uses junction table)";
+    } else if (recommendation.table1OwnsMany) {
+      type = "ONE-TO-MANY";
+      implementation = `${table2} gets Foreign Key: **${table1}_id**`;
+      dependency = `FK is ${isRequired ? '**REQUIRED** (nullable=False)' : '**OPTIONAL** (nullable=True)'}`;
+    } else if (recommendation.table1OwnsOne) {
+      type = "ONE-TO-ONE";
+      implementation = `${table2} gets Foreign Key: **${table1}_id** (unique=True)`;
+      dependency = `FK is ${isRequired ? '**REQUIRED** (nullable=False)' : '**OPTIONAL** (nullable=True)'}`;
+    } else if (recommendation.table2OwnsMany) {
+      type = "MANY-TO-ONE";
+      implementation = `${table1} gets Foreign Key: **${table2}_id**`;
+      dependency = `FK is ${isRequired ? '**REQUIRED** (nullable=False)' : '**OPTIONAL** (nullable=True)'}`;
+    } else {
+      type = "DISCONNECTED";
+      implementation = "No connection will be created";
+      dependency = "N/A";
     }
 
-    result += `\nApply this to your generator?`;
+    return (
+      <div className="questionnaire-modal">
+        <div className="questionnaire-content results-modal">
+          <h2>📋 Relationship Summary</h2>
+          
+          <div className="results-section">
+            <h3>Connection Type</h3>
+            <p className="result-value">{type}</p>
+          </div>
 
-    if (window.confirm(result)) {
-      applyQuestionnaireToGenerator(rec);
-    }
+          <div className="results-section">
+            <h3>Tables</h3>
+            <p className="result-value">
+              <strong>{table1}</strong> ↔ <strong>{table2}</strong>
+            </p>
+          </div>
 
-    setShowQuestionnaire(false);
+          <div className="results-section">
+            <h3>Implementation</h3>
+            <p className="result-value" dangerouslySetInnerHTML={{ __html: implementation.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></p>
+          </div>
+
+          <div className="results-section">
+            <h3>Dependency</h3>
+            <p className="result-value" dangerouslySetInnerHTML={{ __html: dependency.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></p>
+          </div>
+
+          <div className="results-actions">
+            <button className="confirm-btn" onClick={onConfirm}>
+              APPLY TO GENERATOR
+            </button>
+            <button className="cancel-btn" onClick={onCancel}>
+              CANCEL
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const [showResults, setShowResults] = useState(false);
+  const [currentRecommendation, setCurrentRecommendation] = useState(null);
+
+  const showQuestionnaireResults = (rec) => {
+    setCurrentRecommendation(rec);
+    setShowResults(true);
   };
 
   const applyQuestionnaireToGenerator = (rec) => {
@@ -238,35 +352,80 @@ export function Generator() {
       updatedTables.push(t2);
     }
 
-    if (rec.table1Owns) {
-      if (!t1.hasMany.includes(table2)) {
-        t1.hasMany.push(table2);
-      }
-    } else if (rec.table2Owns) {
-      if (!t2.hasMany.includes(table1)) {
-        t2.hasMany.push(table1);
-      }
-    } else if (rec.manyToMany) {
-      if (!t1.notConnected.includes(table2)) {
-        t1.notConnected.push(table2);
-      }
-      if (!t2.notConnected.includes(table1)) {
-        t2.notConnected.push(table1);
-      }
+    // Reset current links between t1 and t2 only
+    t1.hasOne = t1.hasOne.filter(r => r !== table2);
+    t1.hasMany = t1.hasMany.filter(r => r !== table2);
+    t1.notConnected = t1.notConnected.filter(r => r !== table2);
+    t2.hasOne = t2.hasOne.filter(r => r !== table1);
+    t2.hasMany = t2.hasMany.filter(r => r !== table1);
+    t2.notConnected = t2.notConnected.filter(r => r !== table1);
+    
+    // Remove old FK fields between these tables
+    t1.fields = t1.fields.filter(f => f.name !== `${table2}_id`);
+    t2.fields = t2.fields.filter(f => f.name !== `${table1}_id`);
+    
+    // Determine the FK target table and owner table for relationship attribute placement
+    let fkTargetTable = null; // The table that gets the Foreign Key column
+    let ownerTable = null;    // The table that gets the 'has many/one' relationship attribute
+    let isUnique = false;
+    let isFKRequired = !rec.nullable; // nullable=False if user said "cannot exist alone"
+
+    if (rec.table1OwnsMany) { // 1:M (A -> B)
+      ownerTable = t1;
+      fkTargetTable = t2;
+      ownerTable.hasMany.push(table2);
+    } else if (rec.table1OwnsOne) { // 1:1 (A -> B)
+      ownerTable = t1;
+      fkTargetTable = t2;
+      ownerTable.hasOne.push(table2);
+      isUnique = true;
+    } else if (rec.manyToMany) { // M:M
+      t1.notConnected.push(table2);
+      t2.notConnected.push(table1);
+    } else if (rec.table2OwnsMany) { // M:1 (B -> A)
+      ownerTable = t2;
+      fkTargetTable = t1;
+      ownerTable.hasMany.push(table1);
     }
 
+    // Update the FK Target Table Fields
+    if (fkTargetTable) {
+      const otherTableName = ownerTable.tableName;
+      const fkFieldName = `${otherTableName}_id`;
+      
+      const fkField = {
+        name: fkFieldName,
+        type: `Integer`,
+        nullable: !isFKRequired, // True means nullable=True
+        unique: isUnique,
+        isFK: true 
+      };
+      
+      // Add new FK field
+      fkTargetTable.fields.push(fkField);
+    }
+    
     setTables(updatedTables);
+    setShowQuestionnaire(false);
+    setShowResults(false);
   };
+
+  // QUESTIONNAIRE LOGIC END --------------------------------------------------------------------------------------------------
 
   const QuestionnaireModal = () => {
     const question = questions[currentQuestion];
+    const visibleQuestions = questions.filter((q, idx) => {
+      if (idx === 0) return true;
+      return !q.showIf || q.showIf(questionnaireData);
+    });
+    const currentVisibleIndex = visibleQuestions.findIndex(q => q.id === question.id);
 
     return (
       <div className="questionnaire-modal">
         <div className="questionnaire-content">
-          <h2>🤔 Relationship Questionnaire</h2>
+          <h2>🤔 Relationship Interview</h2>
           <div className="question-progress">
-            Question {currentQuestion + 1} of {questions.length}
+            Step {currentVisibleIndex + 1} of {visibleQuestions.length}
           </div>
 
           <div className="question-body">
@@ -288,7 +447,7 @@ export function Generator() {
               <div className="question-inputs">
                 {question.fields.map((field, idx) => (
                   <div key={field}>
-                    <label>{field === "table1" ? "First table:" : "Second table:"}</label>
+                    <label>{field === "table1" ? "Table A:" : "Table B:"}</label>
                     <input type="text" placeholder={question.placeholder[idx]} id={field} />
                   </div>
                 ))}
@@ -298,9 +457,7 @@ export function Generator() {
                     question.fields.forEach((field) => {
                       values[field] = document.getElementById(field).value;
                     });
-                    if (values.table1 && values.table2) {
-                      handleQuestionnaireAnswer(values);
-                    }
+                    handleQuestionnaireAnswer(values);
                   }}
                 >
                   NEXT
@@ -320,25 +477,32 @@ export function Generator() {
 
             {question.type === "boolean" && (
               <div className="question-choices">
-                <button className="choice-button yes" onClick={() => handleQuestionnaireAnswer(true)}>
-                  YES
-                </button>
                 <button className="choice-button no" onClick={() => handleQuestionnaireAnswer(false)}>
-                  NO
+                  NO (Must be linked)
+                </button>
+                <button className="choice-button yes" onClick={() => handleQuestionnaireAnswer(true)}>
+                  YES (Can exist alone)
                 </button>
               </div>
             )}
           </div>
 
-          <button className="cancel-btn" onClick={() => setShowQuestionnaire(false)}>
-            CANCEL
-          </button>
+          <div className="modal-footer">
+            {questionnaireHistory.length > 0 && (
+              <button className="back-btn" onClick={handleQuestionnairePrevious}>
+                ← PREVIOUS
+              </button>
+            )}
+            <button className="cancel-btn" onClick={() => setShowQuestionnaire(false)}>
+              CANCEL
+            </button>
+          </div>
         </div>
       </div>
     );
   };
 
-  // Table editors (unchanged)
+  // Table editors
   const addTable = () => {
     setTables([
       ...tables,
@@ -361,7 +525,27 @@ export function Generator() {
           const updated = { ...table, [key]: value };
 
           if (key === "tableName") {
+            const oldName = table.tableName;
             updated.pluralName = pluralize(value.toLowerCase());
+
+            // Update references in other tables
+            if (oldName && oldName !== value) {
+              tables.forEach(otherTable => {
+                if (otherTable.id !== id) {
+                  // Update relationship arrays
+                  ["hasOne", "hasMany", "notConnected"].forEach(k => {
+                    otherTable[k] = otherTable[k].map(x => (x === oldName ? value.toLowerCase() : x));
+                  });
+                  // Update FK field names
+                  otherTable.fields = otherTable.fields.map(f => {
+                    if (f.isFK && f.name === `${oldName}_id`) {
+                      return { ...f, name: `${value.toLowerCase()}_id` };
+                    }
+                    return f;
+                  });
+                }
+              });
+            }
           }
 
           return updated;
@@ -372,7 +556,28 @@ export function Generator() {
   };
 
   const deleteTable = (id) => {
-    setTables(tables.filter((table) => table.id !== id));
+    const deletedTable = tables.find(t => t.id === id);
+    if (!deletedTable || !deletedTable.tableName) {
+      setTables(tables.filter((table) => table.id !== id));
+      return;
+    }
+
+    const deletedTableName = deletedTable.tableName;
+
+    // Remove table and clean up references in other tables
+    const updatedTables = tables
+      .filter((table) => table.id !== id)
+      .map(table => {
+        // Remove from relationship arrays
+        ["hasOne", "hasMany", "notConnected"].forEach(k => {
+          table[k] = table[k].filter(x => x !== deletedTableName);
+        });
+        // Remove FK fields pointing to deleted table
+        table.fields = table.fields.filter(f => !(f.isFK && f.name === `${deletedTableName}_id`));
+        return table;
+      });
+
+    setTables(updatedTables);
   };
 
   const addRelationship = (tableId, relationType) => {
@@ -393,7 +598,7 @@ export function Generator() {
       tables.map((table) => {
         if (table.id === tableId) {
           const updated = { ...table };
-          updated[relationType][index] = value;
+          updated[relationType][index] = value.toLowerCase();
           return updated;
         }
         return table;
@@ -406,7 +611,22 @@ export function Generator() {
       tables.map((table) => {
         if (table.id === tableId) {
           const updated = { ...table };
+          const targetTableName = updated[relationType][index];
           updated[relationType] = updated[relationType].filter((_, idx) => idx !== index);
+
+          // Clean up bidirectional links
+          const targetTable = tables.find(t => t.tableName === targetTableName);
+          if (targetTable) {
+            // Remove FK from target if we owned them
+            if (relationType === 'hasMany' || relationType === 'hasOne') {
+              targetTable.fields = targetTable.fields.filter(f => f.name !== `${table.tableName}_id`);
+            }
+            // Remove M:M link from target
+            if (relationType === 'notConnected') {
+              targetTable.notConnected = targetTable.notConnected.filter(x => x !== table.tableName);
+            }
+          }
+
           return updated;
         }
         return table;
@@ -436,6 +656,31 @@ export function Generator() {
               fields: table.fields.map((field, idx) => {
                 if (idx === fieldIndex) {
                   const updated = { ...field, [key]: value };
+
+                  // Validate field name
+                  if (key === "name" && value) {
+                    const lowerValue = value.toLowerCase();
+                    
+                    // Check for reserved names
+                    if (lowerValue === "id") {
+                      alert("Field name 'id' is reserved. Please use a different name.");
+                      return field;
+                    }
+                    
+                    // Check for FK conflicts
+                    const fkFields = table.fields.filter(f => f.isFK).map(f => f.name);
+                    if (fkFields.includes(`${lowerValue}`)) {
+                      alert(`Field name '${value}' conflicts with a generated foreign key. Please use a different name.`);
+                      return field;
+                    }
+                    
+                    // Check for duplicates (excluding current field)
+                    const duplicates = table.fields.filter((f, i) => i !== idx && f.name === lowerValue);
+                    if (duplicates.length > 0) {
+                      alert(`Field name '${value}' already exists. Please use a unique name.`);
+                      return field;
+                    }
+                  }
 
                   if (key === "nullable" || key === "unique" || key === "type") {
                     let baseType = updated.type.split(",")[0].trim();
@@ -478,7 +723,6 @@ export function Generator() {
       if (t.tableName) byName[t.tableName] = t;
     });
 
-    // We'll collect junctions globally to avoid dupes
     const junctions = new Set();
 
     return tables.map((table) => {
@@ -487,7 +731,6 @@ export function Generator() {
 
       const foreignKeys = [];
       const relationships = [];
-      const generatedFields = [];
       const associationProxies = [];
 
       // Check if OTHER tables claim to own US -> produce our belongs_to entries
@@ -498,19 +741,23 @@ export function Generator() {
         const theyOwnUs = (otherTable.hasOne || []).includes(table.tableName) || (otherTable.hasMany || []).includes(table.tableName);
 
         if (theyOwnUs) {
-          // foreign key on us pointing to otherTable
+          // FIXED: Look up FK field in the CURRENT table (the one receiving the FK)
+          const fkField = table.fields.find(f => f.isFK && f.name === `${otherTable.tableName}_id`);
+
           foreignKeys.push({
             fieldName: `${otherTable.tableName}_id`,
-            references: pluralize(otherTable.tableName), // already lowercased plural
+            references: pluralize(otherTable.tableName),
+            nullable: fkField ? fkField.nullable : false,
+            unique: fkField ? fkField.unique : false,
           });
 
           const isOneToOne = (otherTable.hasOne || []).includes(table.tableName);
-          // our relationship to other table (belongs_to)
+          
           relationships.push({
             type: "belongs_to",
             target: otherTable.tableName,
-            relationshipName: otherTable.tableName, // singular
-            backPopulates: isOneToOne ? table.tableName : tablePlural, // match what's set on the other side
+            relationshipName: otherTable.tableName, 
+            backPopulates: isOneToOne ? table.tableName : tablePlural,
             description: `${className} belongs to ${otherTable.tableName}`,
           });
         }
@@ -527,14 +774,6 @@ export function Generator() {
           backPopulates: table.tableName,
           description: `${className} has one ${targetTable}`,
         });
-
-        generatedFields.push({
-          type: "relationship_created",
-          tableName: targetTable,
-          fieldName: `${table.tableName}_id`,
-          relationshipName: table.tableName,
-          description: `In ${targetTable}: ${table.tableName}_id (FK) and ${table.tableName} (relationship) created`,
-        });
       });
 
       // For tables WE own via hasMany -> create has_many on us (target has FK)
@@ -550,19 +789,10 @@ export function Generator() {
           description: `${className} has many ${targetPlural}`,
         });
 
-        generatedFields.push({
-          type: "relationship_created",
-          tableName: targetTable,
-          fieldName: `${table.tableName}_id`,
-          relationshipName: table.tableName,
-          description: `In ${targetTable}: ${table.tableName}_id (FK) and ${table.tableName} (relationship) created`,
-        });
-
-        // Association proxy detection:
+        // Association proxy detection
         if (options.useAssociationProxy) {
           const targetTableObj = byName[targetTable];
           if (targetTableObj) {
-            // For each OTHER table that owns the targetTable, we can proxy to that other table via our target
             tables.forEach((otherTable) => {
               if (!otherTable.tableName) return;
               if (otherTable.tableName === table.tableName || otherTable.tableName === targetTable) return;
@@ -570,9 +800,9 @@ export function Generator() {
               const otherOwnsTarget = (otherTable.hasMany || []).includes(targetTable) || (otherTable.hasOne || []).includes(targetTable);
               if (otherOwnsTarget) {
                 associationProxies.push({
-                  proxyName: pluralize(otherTable.tableName), // e.g., users
-                  throughRelationship: targetPlural, // our relationship name to target
-                  targetAttribute: otherTable.tableName, // attribute on target pointing to otherTable
+                  proxyName: pluralize(otherTable.tableName),
+                  throughRelationship: targetPlural,
+                  targetAttribute: otherTable.tableName,
                   description: `Access ${pluralize(otherTable.tableName)} through ${targetPlural}`,
                 });
               }
@@ -596,12 +826,6 @@ export function Generator() {
           backPopulates: pluralize(table.tableName),
           description: `${className} has many ${targetPlural} (through ${junctionName})`,
         });
-
-        generatedFields.push({
-          type: "junction_table",
-          tableName: junctionName,
-          description: `Junction table ${junctionName} created with ${table.tableName}_id and ${targetTable}_id`,
-        });
       });
 
       return {
@@ -610,9 +834,8 @@ export function Generator() {
         tablePlural,
         generatedForeignKeys: foreignKeys,
         generatedRelationships: relationships,
-        generatedFields,
         associationProxies,
-        junctions: Array.from(junctions), // for potential use if needed
+        junctions: Array.from(junctions),
       };
     });
   };
@@ -627,17 +850,15 @@ export function Generator() {
     }
     code += `\n`;
 
-    // Collect junction tables globally (unique)
-    const junctionSet = new Map(); // junctionName -> [left, right]
+    const junctionSet = new Map();
     analyzed.forEach((t) => {
-      (t.generatedFields || []).forEach((gf) => {
-        if (gf.type === "junction_table") {
-          const parts = gf.tableName.split("_");
+      (t.generatedRelationships || []).forEach((rel) => {
+        if (rel.type === "many_to_many" && rel.junctionTable) {
+          const parts = rel.junctionTable.split("_");
           if (parts.length === 2) {
             const left = parts[0];
             const right = parts[1];
-            const name = [left, right].sort().join("_");
-            junctionSet.set(name, [left, right]);
+            junctionSet.set(rel.junctionTable, [left, right]);
           }
         }
       });
@@ -668,19 +889,34 @@ export function Generator() {
       code += `    __tablename__ = '${tablePlural}'\n\n`;
       code += `    id = db.Column(db.Integer, primary_key=True)\n`;
 
-      // user fields
+      // user fields (excluding FKs)
+      const customFKNames = table.generatedForeignKeys.map(fk => fk.fieldName);
+      
       (table.fields || []).forEach((field) => {
         if (!field.name) return;
-        code += `    ${field.name} = db.Column(db.${field.type})\n`;
+        
+        // Only emit non-FK fields here; FKs are handled in the dedicated block below
+        if (!customFKNames.includes(field.name)) {
+          code += `    ${field.name} = db.Column(db.${field.type})\n`;
+        }
       });
-
-      // generated foreign keys (lowercase plural references)
+      
+      // generated foreign keys (lowercase plural references) - This block handles nullable/unique constraints
       if ((table.generatedForeignKeys || []).length > 0) {
         code += `\n    # Foreign Keys\n`;
         table.generatedForeignKeys.forEach((fk) => {
-          // ensure references are lowercase plural
           const ref = fk.references.toLowerCase();
-          code += `    ${fk.fieldName} = db.Column(db.Integer, db.ForeignKey('${ref}.id'), nullable=False)\n`;
+          
+          let constraints = [];
+          if (fk.unique) constraints.push("unique=True");
+          if (!fk.nullable) constraints.push("nullable=False");
+
+          let typeAndConstraints = `db.Integer, db.ForeignKey('${ref}.id')`;
+          if (constraints.length > 0) {
+            typeAndConstraints += `, ${constraints.join(", ")}`;
+          }
+
+          code += `    ${fk.fieldName} = db.Column(${typeAndConstraints})\n`;
         });
       }
 
@@ -689,11 +925,9 @@ export function Generator() {
         code += `\n    # Relationships\n`;
         table.generatedRelationships.forEach((rel) => {
           const targetClass = rel.target.charAt(0).toUpperCase() + rel.target.slice(1);
-          // make a safe relationship attribute name (python var)
           const relName = rel.relationshipName;
           code += `    ${relName} = db.relationship('${targetClass}'`;
 
-          // For many-to-many provide secondary
           if (rel.type === "many_to_many" && rel.junctionTable) {
             code += `, secondary=${rel.junctionTable}`;
           }
@@ -701,22 +935,25 @@ export function Generator() {
           if (options.autoBackPopulates && rel.backPopulates) {
             code += `, back_populates='${rel.backPopulates}'`;
           }
+          
+          // Add cascade delete for owned relationships (has_many, has_one)
+          if (options.cascadeDelete && (rel.type === "has_many" || rel.type === "has_one")) {
+            code += `, cascade='all, delete-orphan'`;
+          }
 
           code += `)\n`;
         });
       }
 
-      // Association proxies - ensure we don't overwrite a relationship attribute
+      // Association proxies
       if (options.useAssociationProxy && (table.associationProxies || []).length > 0) {
         code += `\n    # Association Proxies\n`;
         table.associationProxies.forEach((proxy) => {
-          // avoid name collision with existing relationship names
           const existingRelNames = (table.generatedRelationships || []).map((r) => r.relationshipName);
           let proxyName = proxy.proxyName;
           if (existingRelNames.includes(proxyName)) {
             proxyName = `${proxyName}_proxy`;
           }
-          // throughRelationship should be the name of relationship on this class pointing to the intermediate table
           const through = proxy.throughRelationship;
           const targetAttr = proxy.targetAttribute;
           code += `    ${proxyName} = association_proxy('${through}', '${targetAttr}')\n`;
@@ -736,11 +973,27 @@ export function Generator() {
     return code;
   };
 
-  // Generate serializers (string) - adds safe proxy methods
+  // Generate serializers (string) - FIXED to check target table fields
   const generateSerializers = () => {
     const analyzed = analyzeRelationships();
     const modelNames = analyzed.map((t) => (t.className ? t.className : t.tableName.charAt(0).toUpperCase() + t.tableName.slice(1)));
     let code = `from app.extensions import ma\nfrom app.models import ${modelNames.join(", ")}\n\n`;
+
+    // Helper function to get appropriate fields for a target table
+    const getTargetFields = (targetTableName) => {
+      const targetTable = analyzed.find(t => t.tableName === targetTableName);
+      if (!targetTable) return "('id')";
+      
+      // Check what fields the target table actually has
+      const hasName = targetTable.fields.some(f => f.name === 'name');
+      const hasTitle = targetTable.fields.some(f => f.name === 'title');
+      const hasUsername = targetTable.fields.some(f => f.name === 'username');
+      
+      if (hasUsername) return "('id', 'username')";
+      if (hasTitle) return "('id', 'title')";
+      if (hasName) return "('id', 'name')";
+      return "('id')";
+    };
 
     const sorted = [...analyzed].sort((a, b) => {
       if ((a.generatedForeignKeys || []).length === (b.generatedForeignKeys || []).length) return 0;
@@ -752,19 +1005,37 @@ export function Generator() {
       code += `class ${className}Schema(ma.SQLAlchemyAutoSchema):\n`;
       if (options.addDocstrings) code += `    \"\"\"Schema for ${className} model.\"\"\"\n`;
 
-      const belongsTo = (table.generatedRelationships || []).filter((r) => r.type === "belongs_to");
+      // 1. BELONGS_TO/HAS_ONE (The Singular Link)
+      const belongsTo = (table.generatedRelationships || []).filter((r) => r.type === "belongs_to" || r.type === "has_one");
       if (belongsTo.length > 0) {
         belongsTo.forEach((rel) => {
           const targetClass = rel.target.charAt(0).toUpperCase() + rel.target.slice(1);
-          const fieldName = rel.target;
-          code += `    ${fieldName} = ma.Nested(${targetClass}Schema, only=('id', 'name'))\n`;
+          const fieldName = rel.relationshipName;
+          const targetFields = getTargetFields(rel.target);
+          
+          // Exclude the reverse relationship to prevent circular references
+          const excludeRelationship = rel.backPopulates;
+          code += `    ${fieldName} = ma.Nested('${targetClass}Schema', only=${targetFields}, exclude=('${excludeRelationship}',))\n`;
+        });
+      }
+
+      // 2. HAS_MANY / MANY_TO_MANY (The Plural List)
+      const hasMany = (table.generatedRelationships || []).filter((r) => r.type === "has_many" || r.type === "many_to_many");
+      if (hasMany.length > 0) {
+        hasMany.forEach((rel) => {
+          const targetClass = rel.target.charAt(0).toUpperCase() + rel.target.slice(1);
+          const relName = rel.relationshipName;
+          const targetFields = getTargetFields(rel.target);
+          
+          // Exclude the reverse relationship to prevent circular references
+          const excludeRelationship = rel.backPopulates;
+          code += `    ${relName} = ma.Nested('${targetClass}Schema', many=True, dump_only=True, only=${targetFields}, exclude=('${excludeRelationship}',))\n`;
         });
       }
 
       // Association proxy method fields
       if (options.useAssociationProxy && (table.associationProxies || []).length > 0) {
         table.associationProxies.forEach((proxy) => {
-          // ensure serializer field name matches generated proxy name in models (account for collisions)
           const existingRelNames = (table.generatedRelationships || []).map((r) => r.relationshipName);
           let proxyName = proxy.proxyName;
           if (existingRelNames.includes(proxyName)) proxyName = `${proxyName}_proxy`;
@@ -785,7 +1056,7 @@ export function Generator() {
         code += `        exclude = (${excludes.join(", ")})\n`;
       }
 
-      // Add Method implementations for association proxies - safe unique collection
+      // Add Method implementations for association proxies
       if (options.useAssociationProxy && (table.associationProxies || []).length > 0) {
         code += `\n`;
         table.associationProxies.forEach((proxy) => {
@@ -795,6 +1066,8 @@ export function Generator() {
           let proxyName = proxy.proxyName;
           const existingRelNames = (table.generatedRelationships || []).map((r) => r.relationshipName);
           if (existingRelNames.includes(proxyName)) proxyName = `${proxyName}_proxy`;
+          
+          const targetFields = getTargetFields(proxy.targetAttribute);
 
           code += `    def get_${proxyName}(self, obj):\n`;
           code += `        \"\"\"Get unique ${proxyName} through ${through}.\"\"\"\n`;
@@ -803,7 +1076,7 @@ export function Generator() {
           code += `            related = getattr(item, '${targetAttr}', None)\n`;
           code += `            if related and related not in unique_items:\n`;
           code += `                unique_items.append(related)\n`;
-          code += `        return ${targetClass}Schema(many=True, only=('id', 'name')).dump(unique_items)\n\n`;
+          code += `        return ${targetClass}Schema(many=True, only=${targetFields}).dump(unique_items)\n\n`;
         });
       }
 
@@ -815,7 +1088,7 @@ export function Generator() {
     return code;
   };
 
-  // Generate routes (string)
+  // Generate routes (unchanged)
   const generateRoutes = () => {
     const analyzed = analyzeRelationships();
     const modelNames = analyzed.map((t) => (t.className ? t.className : t.tableName.charAt(0).toUpperCase() + t.tableName.slice(1)));
@@ -856,11 +1129,15 @@ export function Generator() {
 
       code += `    def post(self):\n`;
       if (options.addRouteDocstrings) code += `        \"\"\"Create new ${table.tableName}.\"\"\"\n`;
-      code += `        data = request.get_json()\n`;
-      code += `        ${table.tableName} = ${className}(**data)\n`;
-      code += `        db.session.add(${table.tableName})\n`;
-      code += `        db.session.commit()\n`;
-      code += `        return ${table.tableName}_schema.dump(${table.tableName}), 201\n\n\n`;
+      code += `        try:\n`;
+      code += `            data = request.get_json()\n`;
+      code += `            ${table.tableName} = ${className}(**data)\n`;
+      code += `            db.session.add(${table.tableName})\n`;
+      code += `            db.session.commit()\n`;
+      code += `            return ${table.tableName}_schema.dump(${table.tableName}), 201\n`;
+      code += `        except Exception as e:\n`;
+      code += `            db.session.rollback()\n`;
+      code += `            return {'error': str(e)}, 400\n\n\n`;
 
       code += `class ${className}Detail(Resource):\n`;
       if (options.addDocstrings) code += `    \"\"\"Resource for individual ${table.tableName} operations.\"\"\"\n\n`;
@@ -874,8 +1151,26 @@ export function Generator() {
       if (options.addRouteDocstrings) code += `        \"\"\"Update ${table.tableName}.\"\"\"\n`;
       code += `        ${table.tableName} = ${className}.query.get_or_404(${table.tableName}_id)\n`;
       code += `        data = request.get_json()\n`;
-      code += `        for key, value in data.items():\n`;
-      code += `            setattr(${table.tableName}, key, value)\n`;
+      code += `        \n`;
+      code += `        # Prevent modification of foreign keys and relationships\n`;
+      const protectedFields = [];
+      if (table.generatedForeignKeys.length > 0) {
+        table.generatedForeignKeys.forEach(fk => protectedFields.push(`'${fk.fieldName}'`));
+      }
+      if (table.generatedRelationships.length > 0) {
+        table.generatedRelationships.forEach(rel => protectedFields.push(`'${rel.relationshipName}'`));
+      }
+      if (protectedFields.length > 0) {
+        code += `        protected_fields = [${protectedFields.join(", ")}]\n`;
+        code += `        \n`;
+        code += `        for key, value in data.items():\n`;
+        code += `            if key not in protected_fields:\n`;
+        code += `                setattr(${table.tableName}, key, value)\n`;
+      } else {
+        code += `        for key, value in data.items():\n`;
+        code += `            setattr(${table.tableName}, key, value)\n`;
+      }
+      code += `        \n`;
       code += `        db.session.commit()\n`;
       code += `        return ${table.tableName}_schema.dump(${table.tableName}), 200\n\n`;
 
@@ -900,6 +1195,39 @@ export function Generator() {
   };
 
   const handleGenerate = () => {
+    // Validation before generating code
+    const errors = [];
+    
+    tables.forEach((table, idx) => {
+      // Check for empty table name
+      if (!table.tableName || table.tableName.trim() === "") {
+        errors.push(`Table ${idx + 1} has no name`);
+      }
+      
+      // Check for invalid characters in table name
+      if (table.tableName && !/^[a-z][a-z0-9_]*$/.test(table.tableName)) {
+        errors.push(`Table "${table.tableName}" has invalid name (use lowercase letters, numbers, underscores only, must start with letter)`);
+      }
+      
+      // Check for duplicate table names
+      const duplicates = tables.filter(t => t.tableName === table.tableName);
+      if (duplicates.length > 1) {
+        errors.push(`Duplicate table name: "${table.tableName}"`);
+      }
+      
+      // Check for empty field names
+      table.fields.forEach((field, fieldIdx) => {
+        if (!field.isFK && (!field.name || field.name.trim() === "")) {
+          errors.push(`Table "${table.tableName}" has field ${fieldIdx + 1} with no name`);
+        }
+      });
+    });
+    
+    if (errors.length > 0) {
+      alert("Cannot generate code. Please fix the following errors:\n\n" + errors.join("\n"));
+      return;
+    }
+    
     setGeneratedCode({
       models: generateModels(),
       serializers: generateSerializers(),
@@ -920,7 +1248,17 @@ export function Generator() {
         Flask CRUD Generator
       </h1>
 
-      {showQuestionnaire && <QuestionnaireModal />}
+      {showQuestionnaire && !showResults && <QuestionnaireModal />}
+      {showResults && (
+        <ResultsModal
+          recommendation={currentRecommendation}
+          onConfirm={() => applyQuestionnaireToGenerator(currentRecommendation)}
+          onCancel={() => {
+            setShowResults(false);
+            setShowQuestionnaire(false);
+          }}
+        />
+      )}
 
       {!showCode ? (
         <>
@@ -958,6 +1296,10 @@ export function Generator() {
                   <label>
                     <input type="checkbox" checked={options.useAssociationProxy} onChange={(e) => updateOption("useAssociationProxy", e.target.checked)} />
                     Association Proxies
+                  </label>
+                  <label>
+                    <input type="checkbox" checked={options.cascadeDelete} onChange={(e) => updateOption("cascadeDelete", e.target.checked)} />
+                    Cascade Delete
                   </label>
                 </div>
 
@@ -1000,12 +1342,12 @@ export function Generator() {
                 <div className="table-card-body">
                   <div className="naming-section">
                     <div className="naming-row">
-                      <label>Table (singular, lowercase):</label>
+                      <label>Table Name (singular, lowercase):</label>
                       <input type="text" placeholder="user" value={table.tableName} onChange={(e) => updateTable(table.id, "tableName", e.target.value.toLowerCase())} />
                     </div>
 
                     <div className="naming-row">
-                      <label>Table name (plural, lowercase):</label>
+                      <label>Table Name (plural, lowercase):</label>
                       <input type="text" placeholder={table.tableName ? pluralize(table.tableName) : "users"} value={table.pluralName} disabled style={{ opacity: 0.6 }} />
                       <span className="auto-label">AUTO</span>
                     </div>
@@ -1024,75 +1366,97 @@ export function Generator() {
                   </div>
 
                   <div className="relationships-section">
-                    <div className="relationship-group">
-                      <h4>
-                        A <strong>{table.tableName || "table"}/{table.pluralName || pluralize(table.tableName || "table")}</strong> has one:
-                      </h4>
-                      {table.hasOne.map((rel, idx) => (
-                        <div key={idx} className="relationship-input-row">
-                          <input type="text" placeholder="profile (singular)" value={rel} onChange={(e) => updateRelationship(table.id, "hasOne", idx, e.target.value.toLowerCase())} />
-                          <button onClick={() => deleteRelationship(table.id, "hasOne", idx)}>X</button>
-                          {rel && <span className="creates-hint">Creates: {table.tableName}_id in {rel}</span>}
-                        </div>
-                      ))}
-                      <button className="add-rel-btn" onClick={() => addRelationship(table.id, "hasOne")}>
-                        + Add "has one"
-                      </button>
-                    </div>
-
-                    <div className="relationship-group">
-                      <h4>
-                        A <strong>{table.tableName || "table"}/{table.pluralName || pluralize(table.tableName || "table")}</strong> has many:
-                      </h4>
-                      {table.hasMany.map((rel, idx) => (
-                        <div key={idx} className="relationship-input-row">
-                          <input type="text" placeholder="post (singular)" value={rel} onChange={(e) => updateRelationship(table.id, "hasMany", idx, e.target.value.toLowerCase())} />
-                          <button onClick={() => deleteRelationship(table.id, "hasMany", idx)}>X</button>
-                          {rel && <span className="creates-hint">Creates: {table.tableName}_id in {rel}</span>}
-                        </div>
-                      ))}
-                      <button className="add-rel-btn" onClick={() => addRelationship(table.id, "hasMany")}>
-                        + Add "has many"
-                      </button>
-                    </div>
-
-                    <div className="relationship-group">
-                      <h4>
-                        A <strong>{table.tableName || "table"}/{table.pluralName || pluralize(table.tableName || "table")}</strong> is not directly connected with:
-                      </h4>
-                      {table.notConnected.map((rel, idx) => (
-                        <div key={idx} className="relationship-input-row">
-                          <input type="text" placeholder="tag (singular)" value={rel} onChange={(e) => updateRelationship(table.id, "notConnected", idx, e.target.value.toLowerCase())} />
-                          <button onClick={() => deleteRelationship(table.id, "notConnected", idx)}>X</button>
-                          {rel && <span className="creates-hint">Creates junction: {[table.tableName, rel].sort().join("_")}</span>}
-                        </div>
-                      ))}
-                      <button className="add-rel-btn" onClick={() => addRelationship(table.id, "notConnected")}>
-                        + Add M:M
-                      </button>
+                    <div className="relationship-info">
+                      <h4>⚡ Relationships</h4>
+                      <p>Use the <strong>RELATIONSHIP HELPER</strong> button above to define connections between tables.</p>
+                      <p>The helper will guide you through creating proper relationships with correct foreign keys.</p>
+                      
+                      {(table.hasOne.length > 0 || table.hasMany.length > 0 || table.notConnected.length > 0) && (
+                        <>
+                          <h5 style={{ marginTop: '15px' }}>Current Relationships:</h5>
+                          <ul style={{ listStyle: 'none', padding: 0 }}>
+                            {table.hasOne.map((rel, idx) => (
+                              <li key={`one-${idx}`}>
+                                ✓ Has one <strong>{rel}</strong> (1:1)
+                                <button 
+                                  onClick={() => deleteRelationship(table.id, "hasOne", idx)}
+                                  style={{ marginLeft: '10px', padding: '2px 8px', fontSize: '12px' }}
+                                >
+                                  Remove
+                                </button>
+                              </li>
+                            ))}
+                            {table.hasMany.map((rel, idx) => (
+                              <li key={`many-${idx}`}>
+                                ✓ Has many <strong>{pluralize(rel)}</strong> (1:M)
+                                <button 
+                                  onClick={() => deleteRelationship(table.id, "hasMany", idx)}
+                                  style={{ marginLeft: '10px', padding: '2px 8px', fontSize: '12px' }}
+                                >
+                                  Remove
+                                </button>
+                              </li>
+                            ))}
+                            {table.notConnected.map((rel, idx) => (
+                              <li key={`m2m-${idx}`}>
+                                ✓ Links with <strong>{pluralize(rel)}</strong> (M:M)
+                                <button 
+                                  onClick={() => deleteRelationship(table.id, "notConnected", idx)}
+                                  style={{ marginLeft: '10px', padding: '2px 8px', fontSize: '12px' }}
+                                >
+                                  Remove
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
                     </div>
                   </div>
 
                   <div className="fields-section">
-                    <h4>Additional Fields:</h4>
-                    {table.fields.map((field, idx) => (
-                      <div key={idx} className="field-row-extended">
-                        <input type="text" placeholder="username" value={field.name} onChange={(e) => updateField(table.id, idx, "name", e.target.value)} />
-                        <input type="text" placeholder="String(100)" value={field.type.split(",")[0].trim()} onChange={(e) => updateField(table.id, idx, "type", e.target.value)} />
-                        <label className="field-checkbox">
-                          <input type="checkbox" checked={!field.nullable} onChange={(e) => updateField(table.id, idx, "nullable", !e.target.checked)} />
-                          <span>Required</span>
-                        </label>
-                        <label className="field-checkbox">
-                          <input type="checkbox" checked={field.unique} onChange={(e) => updateField(table.id, idx, "unique", e.target.checked)} />
-                          <span>Unique</span>
-                        </label>
-                        <button onClick={() => deleteField(table.id, idx)}>X</button>
-                      </div>
-                    ))}
+                    <h4>Custom Fields:</h4>
+                    {table.fields.filter(f => !f.isFK).map((field, idx) => {
+                      const actualIndex = table.fields.indexOf(field);
+                      return (
+                        <div key={actualIndex} className="field-row-extended">
+                          <input type="text" placeholder="username" value={field.name} onChange={(e) => updateField(table.id, actualIndex, "name", e.target.value)} />
+                          <input type="text" placeholder="String(100)" value={field.type.split(",")[0].trim()} onChange={(e) => updateField(table.id, actualIndex, "type", e.target.value)} />
+                          <label className="field-checkbox">
+                            <input type="checkbox" checked={!field.nullable} onChange={(e) => updateField(table.id, actualIndex, "nullable", !e.target.checked)} />
+                            <span>Required</span>
+                          </label>
+                          <label className="field-checkbox">
+                            <input type="checkbox" checked={field.unique} onChange={(e) => updateField(table.id, actualIndex, "unique", e.target.checked)} />
+                            <span>Unique</span>
+                          </label>
+                          <button onClick={() => deleteField(table.id, actualIndex)}>X</button>
+                        </div>
+                      );
+                    })}
                     <button className="add-field-btn" onClick={() => addField(table.id)}>
                       + Add Field
                     </button>
+                    
+                    {table.fields.filter(f => f.isFK).length > 0 && (
+                      <>
+                        <h4 style={{ marginTop: '20px' }}>Generated Foreign Keys (Read-Only):</h4>
+                        {table.fields.filter(f => f.isFK).map((field, idx) => (
+                          <div key={`fk-${idx}`} className="field-row-extended fk-field">
+                            <input type="text" value={field.name} disabled />
+                            <input type="text" value="Integer (FK)" disabled />
+                            <label className="field-checkbox">
+                              <input type="checkbox" checked={!field.nullable} disabled />
+                              <span>Required</span>
+                            </label>
+                            <label className="field-checkbox">
+                              <input type="checkbox" checked={field.unique} disabled />
+                              <span>Unique</span>
+                            </label>
+                          </div>
+                        ))}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1108,7 +1472,7 @@ export function Generator() {
       ) : (
         <>
           <button className="back-to-editor-btn" onClick={() => setShowCode(false)}>
-            <ArrowLeft size={16} /> BACK
+            <ArrowLeft size={16} /> BACK TO EDITOR
           </button>
 
           <div className="code-output-section">

@@ -1,239 +1,143 @@
 from flask import request, jsonify, session
 from flask_restful import Resource
-from app.extensions import db
-from app.models import User, Cheat, Language, Category
-from app.serializers import (
-    simple_user_schema,
-    user_schema,
-    language_schema, languages_schema,
-    category_schema, categories_schema,
-    cheat_schema, cheats_schema
-)
-
-# ================ AUTH RESOURCES ================ #
-
-class Signup(Resource):
-    def post(self):
-        """Create new user account."""
-        data = request.get_json()
-        
-        # Check if email already exists
-        if User.query.filter_by(email=data.get('email')).first():
-            return {'error': 'Email already exists'}, 400
-        
-        # Create new user (password auto-hashed in __init__)
-        user = User(
-            name=data['name'],
-            email=data['email'],
-            password=data['password']
-        )
-        db.session.add(user)
-        db.session.commit()
-        
-        # Set session
-        session['user_id'] = user.id
-        
-        # Return simple user data (no cheats needed for signup)
-        return simple_user_schema.dump(user), 201
-
-
-class Login(Resource):
-    def post(self):
-        """Authenticate user."""
-        data = request.get_json()
-        user = User.query.filter_by(email=data.get('email')).first()
-        
-        # Verify credentials
-        if user and user.authenticate(data.get('password')):
-            session['user_id'] = user.id
-            # Return simple user data (no cheats needed for login)
-            return simple_user_schema.dump(user), 200
-        
-        return {'error': 'Invalid credentials'}, 401
-
-
-class Logout(Resource):
-    def post(self):
-        """End user session."""
-        session.pop('user_id', None)
-        return {'message': 'Logged out'}, 200
+from sqlalchemy.orm import joinedload
+from .extensions import db
+from .models import User, Cheat, Language, Category 
+from .serializers import user_schema, users_schema, language_schema, languages_schema, category_schema, categories_schema, cheat_schema, cheats_schema
+import json
+import os
+import re
+from collections import defaultdict
+import html as html_module
 
 
 class CheckSession(Resource):
     def get(self):
-        """
-        Verify session and return user data with grouped cheats.
-        
-        Returns:
-            {
-                'logged_in': True,
-                'user': {
-                    'id': 1,
-                    'name': 'Josh',
-                    'email': 'josh@josh.com',
-                    'languages': [
-                        {
-                            'id': 1,
-                            'name': 'JavaScript',
-                            'cheats': [...]
-                        }
-                    ],
-                    'categories': [
-                        {
-                            'id': 1,
-                            'name': 'Arrays',
-                            'cheats': [...]
-                        }
-                    ]
-                }
-            }
-        """
         user_id = session.get('user_id')
-        if not user_id:
-            return {'logged_in': False}, 401
-        
-        user = User.query.get(user_id)
-        if not user:
-            return {'error': 'User not found'}, 404
-        
-        # Schema handles ALL the grouping logic!
-        return {
-            'logged_in': True,
-            'user': user_schema.dump(user)
-        }, 200
+        if user_id:
+            user = User.query.get(user_id)
+            return {
+                "logged_in": True,
+                "user": user_schema.dump(user)
+            }, 200
+        return {"logged_in": False}, 401
 
 
-# ================ CHEAT RESOURCES ================ #
+### =========== USER ROUTES =========== ###
+class UserDetail(Resource):
+    def get(self, id):
+        user = User.query.get_or_404(id)
+        return user_schema.dump(user), 200
 
-class CheatList(Resource):
+class UserList(Resource):
     def get(self):
-        """
-        Get all cheats for logged-in user.
-        Optional filters: language_id, category_id
-        """
-        user_id = session.get('user_id')
-        if not user_id:
-            return {'error': 'Not logged in'}, 401
-        
-        # Base query
-        query = Cheat.query.filter_by(user_id=user_id)
-        
-        # Apply filters if provided
-        language_id = request.args.get('language_id')
-        if language_id:
-            query = query.filter_by(language_id=language_id)
-        
-        category_id = request.args.get('category_id')
-        if category_id:
-            query = query.filter_by(category_id=category_id)
-        
-        cheats = query.all()
-        
-        # Serialize with nested language and category
-        return cheats_schema.dump(cheats), 200
+        users = User.query.all()
+        return users_schema.dump(users), 200
     
-    def post(self):
-        """Create new cheat."""
-        user_id = session.get('user_id')
-        if not user_id:
-            return {'error': 'Not logged in'}, 401
-        
-        data = request.get_json()
-        
-        # Create cheat
-        cheat = Cheat(
-            title=data['title'],
-            code=data['code'],
-            notes=data.get('notes', ''),
-            user_id=user_id,
-            language_id=data['language_id'],
-            category_id=data['category_id']
+    def post(self):  
+        data = request.json
+        user = User(
+            name=data['name'],
+            email=data['email']
         )
-        
-        db.session.add(cheat)
+        user.password = data['password']
+        db.session.add(user)
         db.session.commit()
-        
-        # Return complete cheat with nested relationships
-        return cheat_schema.dump(cheat), 201
-
-
-class CheatDetail(Resource):
-    def get(self, cheat_id):
-        """Get single cheat by ID."""
-        cheat = Cheat.query.get_or_404(cheat_id)
-        return cheat_schema.dump(cheat), 200
+        session['user_id'] = user.id
+        return user_schema.dump(user), 201
     
-    def patch(self, cheat_id):
-        """Update cheat."""
-        user_id = session.get('user_id')
-        if not user_id:
-            return {'error': 'Not logged in'}, 401
-        
-        cheat = Cheat.query.get_or_404(cheat_id)
-        
-        # Verify ownership
-        if cheat.user_id != user_id:
-            return {'error': 'Unauthorized'}, 403
-        
-        # Update fields if provided
-        data = request.get_json()
-        if 'title' in data:
-            cheat.title = data['title']
-        if 'code' in data:
-            cheat.code = data['code']
-        if 'notes' in data:
-            cheat.notes = data['notes']
-        if 'language_id' in data:
-            cheat.language_id = data['language_id']
-        if 'category_id' in data:
-            cheat.category_id = data['category_id']
-        
-        db.session.commit()
-        
-        # Return updated cheat with nested relationships
-        return cheat_schema.dump(cheat), 200
-    
-    def delete(self, cheat_id):
-        """Delete cheat."""
-        user_id = session.get('user_id')
-        if not user_id:
-            return {'error': 'Not logged in'}, 401
-        
-        cheat = Cheat.query.get_or_404(cheat_id)
-        
-        # Verify ownership
-        if cheat.user_id != user_id:
-            return {'error': 'Unauthorized'}, 403
-        
-        db.session.delete(cheat)
-        db.session.commit()
-        
-        return {'message': 'Deleted'}, 200
+class Login(Resource):
+    def post(self):
+        data = request.json
+        user = User.query.filter_by(email=data['email']).first()
+        if user and user.check_password(data['password']):
+            session['user_id'] = user.id
+            return user_schema.dump(user), 200
+        return {'error': 'Invalid email or password'}, 401
+
+class Logout(Resource):
+    def post(self):
+        session.pop('user_id', None)
+        return {}, 204
 
 
-# ================ LANGUAGE RESOURCES ================ #
+### =========== LANGUAGE ROUTES =========== ###
+class LanguageDetail(Resource):
+    def get(self, id):
+        language = Language.query.get_or_404(id)
+        return language_schema.dump(language), 200
 
 class LanguageList(Resource):
     def get(self):
-        """Get all languages."""
         languages = Language.query.all()
         return languages_schema.dump(languages), 200
 
 
-# ================ CATEGORY RESOURCES ================ #
+### =========== CATEGORY ROUTES =========== ###
+class CategoryDetail(Resource):
+    def get(self, id):
+        category = Category.query.get_or_404(id)
+        return category_schema.dump(category), 200
 
 class CategoryList(Resource):
     def get(self):
-        """Get all categories."""
         categories = Category.query.all()
         return categories_schema.dump(categories), 200
+
+
+### =========== CHEAT ROUTES =========== ###
+class CheatDetail(Resource):
+    def get(self, id):
+        cheat = Cheat.query.get_or_404(id)
+        return cheat_schema.dump(cheat), 200
+        
+    def delete(self, id):
+        cheat = Cheat.query.get_or_404(id)
+        db.session.delete(cheat)
+        db.session.commit()
+        return {}, 204
+    
+    def patch(self, id):
+        cheat = Cheat.query.get_or_404(id)
+        data = request.json
+        cheat.title = data.get('title', cheat.title)
+        cheat.code = data.get('code', cheat.code)
+        cheat.notes = data.get('notes', cheat.notes)
+        cheat.language_id = data.get('language_id', cheat.language_id)
+        cheat.category_id = data.get('category_id', cheat.category_id)
+        db.session.commit()
+        return cheat_schema.dump(cheat), 200
+
+class CheatList(Resource):
+    def get(self):
+        cheats = Cheat.query.all()
+        return cheats_schema.dump(cheats), 200
+    
+    def post(self):
+        data = request.json
+        user = User.query.get(data['user_id'])
+        category = Category.query.get(data['category_id'])
+        language = Language.query.get(data['language_id'])
+        
+        cheat = Cheat(
+            title=data['title'],
+            code=data['code'],
+            notes=data.get('notes', ''),
+            user=user,
+            category=category,
+            language=language
+        )
+        db.session.add(cheat)
+        db.session.commit()
+        return cheat_schema.dump(cheat), 201
 
 
 # ================ DEV TOOLS RESOURCE ================ #
 
 class DevToolsResource(Resource):
     def post(self):
-        """Execute development commands."""
+        from flask import current_app
+        
         data = request.get_json()
         command = data.get('command')
         
@@ -246,12 +150,10 @@ class DevToolsResource(Resource):
         
         try:
             if command == 'check_session':
-                # Check current session/db info
                 from sqlalchemy import inspect
                 inspector = inspect(db.engine)
                 tables = inspector.get_table_names()
                 
-                # Get table row counts
                 counts = {}
                 for table in tables:
                     result = db.session.execute(db.text(f"SELECT COUNT(*) FROM {table}"))
@@ -262,7 +164,6 @@ class DevToolsResource(Resource):
                 for table in tables:
                     results['output'] += f"  • {table}: {counts[table]} rows\n"
                 
-                # Session info
                 user_id = session.get('user_id')
                 if user_id:
                     user = User.query.get(user_id)
@@ -274,71 +175,46 @@ class DevToolsResource(Resource):
                 results['success'] = True
                 
             elif command == 'delete_db':
-                # Remove database file
-                import os
                 db_path = 'instance/app.db'
                 if os.path.exists(db_path):
                     os.remove(db_path)
-                    results['output'] = f"✓ Deleted {db_path}\n\n⚠️  You'll need to restart Flask server!"
-                    results['success'] = True
+                    results['output'] = f"✓ Deleted {db_path}\n\n⚠️  Restart Flask server!"
                 else:
-                    results['output'] = f"⚠️  Database file not found at {db_path}"
-                    results['success'] = True
+                    results['output'] = f"⚠️  Database file not found"
+                results['success'] = True
                     
             elif command == 'create_db':
-                # Create all tables
                 db.create_all()
-                results['output'] = "✓ Database tables created successfully!\n\nTables created:\n"
-                
                 from sqlalchemy import inspect
                 inspector = inspect(db.engine)
                 tables = inspector.get_table_names()
-                for table in tables:
-                    results['output'] += f"  • {table}\n"
-                
+                results['output'] = "✓ Tables created:\n" + "\n".join(f"  • {t}" for t in tables)
                 results['success'] = True
                 
             elif command == 'upgrade_db':
-                # Run migrations
                 import subprocess
-                result = subprocess.run(
-                    ['flask', 'db', 'upgrade'],
-                    capture_output=True,
-                    text=True,
-                    cwd='.'
-                )
+                result = subprocess.run(['flask', 'db', 'upgrade'], capture_output=True, text=True)
                 results['output'] = result.stdout or "Migration completed"
                 results['error'] = result.stderr
                 results['success'] = result.returncode == 0
                 
             elif command == 'run_seed':
-                # Run seed file
                 import subprocess
-                result = subprocess.run(
-                    ['python', 'seed.py'],
-                    capture_output=True,
-                    text=True,
-                    cwd='.'
-                )
+                result = subprocess.run(['python', 'seed.py'], capture_output=True, text=True)
                 results['output'] = result.stdout or "Seed completed"
                 results['error'] = result.stderr
                 results['success'] = result.returncode == 0
                 
             elif command == 'generate_seed':
-                # Generate seed file from current database
-                seed_content = self._generate_seed_file()
+                results['output'] = "✓ generate_seed not implemented yet"
+                results['success'] = True
                 
-                # ✅ OVERWRITES seed.py directly
-                with open('seed.py', 'w') as f:
-                    f.write(seed_content)
-                    
-                results['output'] = "✓ Generated seed.py from current database!\n\n"
-                results['output'] += "File contents:\n"
-                results['output'] += "• All users with hashed passwords\n"
-                results['output'] += "• All languages\n"
-                results['output'] += "• All categories\n"
-                results['output'] += "• All cheats with code and notes\n\n"
-                results['output'] += "Run with: python seed.py"
+            elif command == 'generate_curl':
+                results['output'] = "Visit http://localhost:5555/curl in browser"
+                results['success'] = True
+                
+            elif command == 'class_inventory':
+                results['output'] = "Visit http://localhost:5555/class-inventory in browser"
                 results['success'] = True
                 
             else:
@@ -349,151 +225,314 @@ class DevToolsResource(Resource):
             results['error'] = str(e)
             results['output'] = traceback.format_exc()
             
-        return jsonify(results)
+        return results
+
+
+# ================ DEV TOOLS BROWSER PAGES ================ #
+
+def register_devtools(app, api_prefix=''):
+    """Register browser-accessible dev tool pages."""
     
-    def _generate_seed_file(self):
-        """Generate a seed.py file from current database state."""
-        from datetime import datetime
+    SCHEMA_MAP = {
+        "users": user_schema,
+        "cheats": cheat_schema,
+        "languages": language_schema,
+        "categories": category_schema
+    }
+    
+    @app.route('/curl')
+    def curl_page():
+        """Browser page with all curl commands + copy buttons."""
         
-        users = User.query.all()
-        languages = Language.query.all()
-        categories = Category.query.all()
-        cheats = Cheat.query.all()
+        def extract_fields(schema):
+            if schema is None:
+                return []
+            return [f for f in getattr(schema, "fields", {}) 
+                    if f not in ("id", "_password_hash", "created_at", "updated_at")]
         
-        # Generate user code
-        user_lines = []
-        for u in users:
-            user_lines.append(
-                f"        users['{u.name}'] = User(\n"
-                f"            name='{u.name}',\n"
-                f"            email='{u.email}'\n"
-                f"        )\n"
-                f"        users['{u.name}']._password_hash = '{u._password_hash}'\n"
-                f"        db.session.add(users['{u.name}'])"
-            )
+        base_url = "http://localhost:5555"
+        commands = []
         
-        # Generate language code
-        lang_lines = []
-        for lang in languages:
-            lang_lines.append(
-                f"        languages['{lang.name}'] = Language(\n"
-                f"            name='{lang.name}'\n"
-                f"        )\n"
-                f"        db.session.add(languages['{lang.name}'])"
-            )
-        
-        # Generate category code
-        cat_lines = []
-        for cat in categories:
-            cat_lines.append(
-                f"        categories['{cat.name}'] = Category(\n"
-                f"            name='{cat.name}'\n"
-                f"        )\n"
-                f"        db.session.add(categories['{cat.name}'])"
-            )
-        
-        # Generate cheat code
-        cheat_lines = []
-        for cheat in cheats:
-            # Escape quotes and newlines
-            title = cheat.title.replace("'", "\\'").replace('"', '\\"')
-            code = cheat.code.replace("'", "\\'").replace('"', '\\"').replace('\n', '\\n')
-            notes = (cheat.notes or "").replace("'", "\\'").replace('"', '\\"').replace('\n', '\\n')
+        for rule in app.url_map.iter_rules():
+            if rule.endpoint in ("static", "curl_page", "class_inventory_page", "devtools_home", "debug_session"):
+                continue
             
-            cheat_lines.append(
-                f"        cheat = Cheat(\n"
-                f"            title='{title}',\n"
-                f"            code='{code}',\n"
-                f"            notes='{notes}',\n"
-                f"            user=users['{cheat.user.name}'],\n"
-                f"            language=languages['{cheat.language.name}'],\n"
-                f"            category=categories['{cheat.category.name}']\n"
-                f"        )\n"
-                f"        db.session.add(cheat)"
-            )
+            methods = [m for m in rule.methods if m in ["GET", "POST", "PATCH", "PUT", "DELETE"]]
+            
+            for method in methods:
+                url = str(rule)
+                curl_cmd = f"curl -X {method} {base_url}{url}"
+                
+                schema = None
+                for key, s in SCHEMA_MAP.items():
+                    if key in url:
+                        schema = s
+                        break
+                
+                if method in ["POST", "PATCH", "PUT"] and schema:
+                    fields = extract_fields(schema)
+                    if fields:
+                        data = {f: f"<{f}>" for f in fields}
+                        curl_cmd += f" -H 'Content-Type: application/json' -d '{json.dumps(data)}'"
+                
+                if url in [f"{api_prefix}/logout", f"{api_prefix}/check_session"]:
+                    curl_cmd += " -b cookies.txt"
+                
+                if url in [f"{api_prefix}/login", f"{api_prefix}/users"]:
+                    curl_cmd += " -c cookies.txt"
+                
+                commands.append({
+                    "header": f"{method} {url}",
+                    "curl": curl_cmd
+                })
         
-        seed_template = """#!/usr/bin/env python3
-\"\"\"
-Auto-generated seed file
-Generated: {timestamp}
-\"\"\"
-from app import create_app
-from app.extensions import db
-from app.models import User, Language, Category, Cheat
-
-def seed_database():
-    app = create_app()
-    
-    with app.app_context():
-        print("🌱 Starting seed...")
-        
-        # Clear existing data
-        print("Clearing existing data...")
-        Cheat.query.delete()
-        Language.query.delete()
-        Category.query.delete()
-        User.query.delete()
-        db.session.commit()
-        
-        # Create Users
-        print("Creating users...")
-        users = {{}}
-{user_code}
-        db.session.commit()
-        
-        # Create Languages
-        print("Creating languages...")
-        languages = {{}}
-{language_code}
-        db.session.commit()
-        
-        # Create Categories
-        print("Creating categories...")
-        categories = {{}}
-{category_code}
-        db.session.commit()
-        
-        # Create Cheats
-        print("Creating cheats...")
-{cheat_code}
-        db.session.commit()
-        
-        print("✅ Seed completed!")
-        print(f"  • {{len(users)}} users")
-        print(f"  • {{len(languages)}} languages")
-        print(f"  • {{len(categories)}} categories")
-        print(f"  • {{len(cheats)}} cheats")
-
-if __name__ == "__main__":
-    seed_database()
+        page_html = """<!DOCTYPE html>
+<html>
+<head>
+    <title>cURL Commands</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        h1 { color: #0ff; }
+        a { color: #0ff; }
+        .cmd-box { background: #2a2a2a; padding: 15px; border-radius: 5px; margin: 10px 0; position: relative; }
+        .header { color: #0ff; font-weight: bold; margin-bottom: 8px; }
+        .curl { color: #0f0; white-space: pre-wrap; word-wrap: break-word; }
+        .copy-btn { 
+            position: absolute; top: 10px; right: 10px; 
+            background: #0ff; color: #000; border: none; 
+            padding: 5px 10px; cursor: pointer; border-radius: 3px; font-family: monospace;
+        }
+        .copy-btn:hover { background: #0f0; }
+        .copy-btn.copied { background: #0f0; }
+        .nav { margin-bottom: 20px; }
+        .nav a { margin-right: 15px; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/devtools">← DevTools Home</a>
+        <a href="/class-inventory">Class Inventory</a>
+    </div>
+    <h1>cURL Commands</h1>
 """
         
-        return seed_template.format(
-            timestamp=datetime.now().isoformat(),
-            user_code='\n'.join(user_lines) if user_lines else '        pass',
-            language_code='\n'.join(lang_lines) if lang_lines else '        pass',
-            category_code='\n'.join(cat_lines) if cat_lines else '        pass',
-            cheat_code='\n'.join(cheat_lines) if cheat_lines else '        pass'
-        )
+        for cmd in commands:
+            escaped_curl = html_module.escape(cmd["curl"])
+            page_html += f"""
+    <div class="cmd-box">
+        <button class="copy-btn" data-curl="{escaped_curl}" onclick="copyCmd(this)">Copy</button>
+        <div class="header">{cmd["header"]}</div>
+        <div class="curl">{cmd["curl"]}</div>
+    </div>
+"""
+        
+        page_html += """
+    <script>
+        function copyCmd(btn) {
+            const text = btn.getAttribute('data-curl');
+            navigator.clipboard.writeText(text);
+            btn.textContent = 'Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = 'Copy';
+                btn.classList.remove('copied');
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
+"""
+        return page_html
+    
+    
+    @app.route('/class-inventory')
+    def class_inventory_page():
+        """Browser page showing CSS class usage across React components."""
+        
+        root_dir = './client/src'
+        
+        if not os.path.exists(root_dir):
+            return f"<h1>❌ Directory '{root_dir}' not found!</h1>"
+        
+        class_inventory = defaultdict(lambda: {'files': [], 'count': 0})
+        pattern = r'className=["\']([^"\']+)["\']|className=\{["\']([^"\']+)["\']\}'
+        
+        for root, dirs, files in os.walk(root_dir):
+            dirs[:] = [d for d in dirs if d not in ['node_modules', 'dist', 'build', '.git']]
+            
+            for file in files:
+                if file.endswith(('.jsx', '.js', '.tsx', '.ts')):
+                    filepath = os.path.join(root, file)
+                    rel_path = os.path.relpath(filepath, root_dir)
+                    
+                    try:
+                        with open(filepath, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            matches = re.findall(pattern, content)
+                            for match in matches:
+                                classes = match[0] or match[1]
+                                for classname in classes.split():
+                                    if classname:
+                                        class_inventory[classname]['files'].append(rel_path)
+                                        class_inventory[classname]['count'] += 1
+                    except:
+                        pass
+        
+        categorized = {'shared': {}, 'service': {}, 'component': {}}
+        
+        for classname, data in class_inventory.items():
+            unique_files = list(set(data['files']))
+            count = len(unique_files)
+            
+            if count >= 3:
+                categorized['shared'][classname] = unique_files
+            elif count == 2:
+                categorized['service'][classname] = unique_files
+            else:
+                categorized['component'][classname] = unique_files
+        
+        page_html = """<!DOCTYPE html>
+<html>
+<head>
+    <title>Class Inventory</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        h1, h2 { color: #0ff; }
+        a { color: #0ff; }
+        .nav { margin-bottom: 20px; }
+        .nav a { margin-right: 15px; }
+        .section { background: #2a2a2a; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .class-item { padding: 8px; border-bottom: 1px solid #333; }
+        .class-item:last-child { border-bottom: none; }
+        .class-name { color: #ff0; font-weight: bold; }
+        .file-list { color: #888; font-size: 12px; margin-top: 4px; }
+        .count { color: #0f0; }
+        .stats { display: flex; gap: 20px; margin-bottom: 20px; }
+        .stat-box { background: #2a2a2a; padding: 15px; border-radius: 5px; text-align: center; }
+        .stat-num { font-size: 24px; color: #0ff; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/devtools">← DevTools Home</a>
+        <a href="/curl">cURL Commands</a>
+    </div>
+    <h1>Class Inventory</h1>
+    
+    <div class="stats">
+        <div class="stat-box">
+            <div class="stat-num">""" + str(len(class_inventory)) + """</div>
+            <div>Total Classes</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num">""" + str(len(categorized['shared'])) + """</div>
+            <div>Shared (3+)</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num">""" + str(len(categorized['service'])) + """</div>
+            <div>Service (2)</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-num">""" + str(len(categorized['component'])) + """</div>
+            <div>Component (1)</div>
+        </div>
+    </div>
+"""
+        
+        # Shared classes
+        page_html += "<div class='section'><h2>📦 Shared Classes (3+ files)</h2>"
+        for classname in sorted(categorized['shared'].keys()):
+            files = categorized['shared'][classname]
+            page_html += f"""
+            <div class="class-item">
+                <span class="class-name">{classname}</span> 
+                <span class="count">({len(files)} files)</span>
+                <div class="file-list">{', '.join(files)}</div>
+            </div>
+"""
+        page_html += "</div>"
+        
+        # Service classes
+        page_html += "<div class='section'><h2>🔧 Service Classes (2 files)</h2>"
+        for classname in sorted(categorized['service'].keys()):
+            files = categorized['service'][classname]
+            page_html += f"""
+            <div class="class-item">
+                <span class="class-name">{classname}</span>
+                <div class="file-list">{', '.join(files)}</div>
+            </div>
+"""
+        page_html += "</div>"
+        
+        # Component classes
+        page_html += "<div class='section'><h2>🎯 Component Classes (1 file)</h2>"
+        for classname in sorted(categorized['component'].keys()):
+            files = categorized['component'][classname]
+            page_html += f"""
+            <div class="class-item">
+                <span class="class-name">{classname}</span>
+                <div class="file-list">{files[0]}</div>
+            </div>
+"""
+        page_html += "</div></body></html>"
+        
+        return page_html
+    
+    
+    @app.route('/devtools')
+    def devtools_home():
+        """DevTools landing page with links to all tools."""
+        
+        return """<!DOCTYPE html>
+<html>
+<head>
+    <title>DevTools</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+        h1 { color: #0ff; }
+        .tool-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        .tool-card { 
+            background: #2a2a2a; padding: 20px; border-radius: 5px; 
+            text-decoration: none; color: #0f0; display: block;
+            border: 1px solid #333; transition: all 0.2s;
+        }
+        .tool-card:hover { border-color: #0ff; background: #333; }
+        .tool-card h2 { color: #0ff; margin: 0 0 10px 0; font-size: 18px; }
+        .tool-card p { margin: 0; color: #888; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>🛠 DevTools</h1>
+    <div class="tool-grid">
+        <a href="/curl" class="tool-card">
+            <h2>📋 cURL Commands</h2>
+            <p>Auto-generated curl commands for all API routes with copy buttons</p>
+        </a>
+        <a href="/class-inventory" class="tool-card">
+            <h2>🎨 Class Inventory</h2>
+            <p>Scan React components for className usage and categorize by reuse</p>
+        </a>
+    </div>
+</body>
+</html>
+"""
 
 
-# ================ REGISTER ROUTES ================ #
-
+### =========== ROUTE INITIALIZATION =========== ###
+    
 def initialize_routes(api):
-    """Register all API endpoints."""
-    # Auth
-    api.add_resource(Signup, '/api/signup')
-    api.add_resource(Login, '/api/login')
-    api.add_resource(Logout, '/api/logout')
-    api.add_resource(CheckSession, '/api/check_session')
+    api.add_resource(UserList, '/users')
+    api.add_resource(UserDetail, '/users/<int:id>')
+    api.add_resource(CheckSession, '/check_session')
+    api.add_resource(Login, '/login')
+    api.add_resource(Logout, '/logout')
+    api.add_resource(LanguageList, '/languages')
+    api.add_resource(LanguageDetail, '/languages/<int:id>')
+    api.add_resource(CategoryList, '/categories')
+    api.add_resource(CategoryDetail, '/categories/<int:id>')
+    api.add_resource(CheatList, '/cheats')
+    api.add_resource(CheatDetail, '/cheats/<int:id>')
+    api.add_resource(DevToolsResource, '/devtools')
     
-    # Cheats
-    api.add_resource(CheatList, '/api/cheats')
-    api.add_resource(CheatDetail, '/api/cheats/<int:cheat_id>')
-    
-    # Languages & Categories
-    api.add_resource(LanguageList, '/api/languages')
-    api.add_resource(CategoryList, '/api/categories')
-    
-    # Dev Tools
-    api.add_resource(DevToolsResource, '/api/dev-tools')
+    # Register browser pages on the app directly
+    register_devtools(api.app, api_prefix='/api')

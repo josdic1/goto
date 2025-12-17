@@ -8,7 +8,8 @@ export function AuthProvider({ children }) {
   const [allCategories, setAllCategories] = useState([]);
 
   const loggedIn = Boolean(user);
-  const API_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+  // const API_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+  const API_URL = "http://localhost:5555/api";
 
   useEffect(() => {
     checkSession();
@@ -21,7 +22,6 @@ export function AuthProvider({ children }) {
       const response = await fetch(`${API_URL}/check_session`, {
         credentials: "include",
       });
-
       if (response.ok) {
         const data = await response.json();
         if (data.logged_in) {

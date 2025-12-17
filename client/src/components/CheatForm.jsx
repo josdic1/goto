@@ -13,7 +13,6 @@ export function CheatForm() {
     notes: "",
     language_id: "",
     category_id: "",
-    user_id: user?.id || "",
   });
 
   const onClear = () => {
@@ -23,13 +22,11 @@ export function CheatForm() {
       notes: "",
       language_id: "",
       category_id: "",
-      user_id: user?.id || "",
     });
   };
 
   useEffect(() => {
     if (id && user?.languages) {
-      // Logic to find the specific cheat from the user's data structure
       const allCheats = user.languages.flatMap((lang) => lang.cheats || []);
       const foundCheat = allCheats.find((c) => c.id === parseInt(id));
 
@@ -38,9 +35,8 @@ export function CheatForm() {
           title: foundCheat.title || "",
           code: foundCheat.code || "",
           notes: foundCheat.notes || "",
-          language_id: foundCheat.language?.id || "",
-          category_id: foundCheat.category?.id || "",
-          user_id: user.id,
+          language_id: foundCheat.language_id || "",
+          category_id: foundCheat.category_id || "",
         });
       }
     }
@@ -57,15 +53,23 @@ export function CheatForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const payload = {
+      title: formData.title,
+      code: formData.code,
+      notes: formData.notes,
+      language_id: parseInt(formData.language_id),
+      category_id: parseInt(formData.category_id),
+      user_id: user.id,
+    };
+
     const result = id
-      ? await updateCheat(id, formData)
-      : await createCheat(formData);
+      ? await updateCheat(id, payload)
+      : await createCheat(payload);
 
     if (!result.success) {
       console.error("Failed:", result.error);
       return;
     }
-    // Success path
     onClear();
     navigate("/");
   };
@@ -74,8 +78,7 @@ export function CheatForm() {
     <>
       <div className="form-container">
         <button type="button" onClick={() => navigate(-1)}>
-          {" "}
-          ⬅ Back to Home{" "}
+          ⬅ Back to Home
         </button>
         <form onSubmit={handleSubmit}>
           <label htmlFor="title">Title</label>
@@ -103,6 +106,7 @@ export function CheatForm() {
               </option>
             ))}
           </select>
+
           <label htmlFor="category_id">Category</label>
           <select
             id="category_id"
