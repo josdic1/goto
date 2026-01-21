@@ -91,8 +91,8 @@ with app.app_context():
     
     cheats.append(Cheat(
         title='Vite Proxy Configuration',
-        code='import { defineConfig } from \'vite\'\nimport react from \'@vitejs/plugin-react\'\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    proxy: {\n      \'/api\': {\n        target: \'http://localhost:5555\',\n        changeOrigin: true,\n        rewrite: (path) => path.replace(/^\\/api/, \'\')\n      }\n    }\n  }\n})',
-        notes='Proxies /api requests to Flask backend at port 5555. Change target port if Flask runs on different port (like 5000). rewrite strips /api prefix before sending to Flask. Good for all React + Flask projects. Avoids CORS issues in development.',
+        code='import { defineConfig } from \'vite\'\nimport react from \'@vitejs/plugin-react\'\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    proxy: {\n      \'/api\': {\n        target: \'http://localhost:5556\',\n        changeOrigin: true,\n        rewrite: (path) => path.replace(/^\\/api/, \'\')\n      }\n    }\n  }\n})',
+        notes='Proxies /api requests to Flask backend at port 5556. Change target port if Flask runs on different port (like 5000). rewrite strips /api prefix before sending to Flask. Good for all React + Flask projects. Avoids CORS issues in development.',
         user_id=u1.id,
         language_id=lang_js.id,
         category_id=cat_startup.id
@@ -154,8 +154,8 @@ with app.app_context():
     
     cheats.append(Cheat(
         title='Flask Run File',
-        code='from app import create_app\n\napp = create_app()\n\nif __name__ == \'__main__\':\n    app.run(port=5555, debug=True)',
-        notes='Entry point to run Flask app. Imports create_app factory function. Runs on port 5555 with debug mode. Execute with python run.py from server directory. Change port to match vite.config proxy.',
+        code='from app import create_app\n\napp = create_app()\n\nif __name__ == \'__main__\':\n    app.run(port=5556, debug=True)',
+        notes='Entry point to run Flask app. Imports create_app factory function. Runs on port 5556 with debug mode. Execute with python run.py from server directory. Change port to match vite.config proxy.',
         user_id=u1.id,
         language_id=lang_python.id,
         category_id=cat_startup.id
@@ -404,7 +404,7 @@ def signup():
     
     cheats.append(Cheat(
         title='Curl POST Create User',
-        code='''curl -X POST http://localhost:5555/api/users \\
+        code='''curl -X POST http://localhost:5556/api/users \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "Josh",
@@ -419,7 +419,7 @@ def signup():
     
     cheats.append(Cheat(
         title='Curl POST Login',
-        code='''curl -X POST http://localhost:5555/api/login \\
+        code='''curl -X POST http://localhost:5556/api/login \\
   -H "Content-Type: application/json" \\
   -d '{
     "email": "josh@josh.com",

@@ -210,11 +210,11 @@ class DevToolsResource(Resource):
                 results['success'] = True
                 
             elif command == 'generate_curl':
-                results['output'] = "Visit http://localhost:5555/curl in browser"
+                results['output'] = "Visit http://localhost:5556/curl in browser"
                 results['success'] = True
                 
             elif command == 'class_inventory':
-                results['output'] = "Visit http://localhost:5555/class-inventory in browser"
+                results['output'] = "Visit http://localhost:5556/class-inventory in browser"
                 results['success'] = True
                 
             else:
@@ -250,7 +250,7 @@ def register_devtools(app, api_prefix=''):
             return [f for f in getattr(schema, "fields", {}) 
                     if f not in ("id", "_password_hash", "created_at", "updated_at")]
         
-        base_url = "http://localhost:5555"
+        base_url = "http://localhost:5556"
         commands = []
         
         for rule in app.url_map.iter_rules():

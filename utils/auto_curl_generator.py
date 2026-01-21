@@ -24,7 +24,7 @@ def extract_schema_fields(schema):
     return [f for f in getattr(schema, "fields", {}) if f not in ("id", "_password_hash")]
 
 def generate_curl_commands():
-    base_url = "http://localhost:5555"
+    base_url = "http://localhost:5556"
     commands = []
     for rule in app.url_map.iter_rules():
         if rule.endpoint == "static":
@@ -112,4 +112,4 @@ def curl_page():
     return html
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5555, debug=True)
+    app.run(host="0.0.0.0", port=5556, debug=True)
