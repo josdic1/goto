@@ -16,12 +16,10 @@ def create_app(config_class=Config):
     Migrate(app, db)
 
     # Configure CORS
-    CORS(app, 
-         resources={r"/*": {"origins": "http://localhost:5173"}},
-         supports_credentials=True,
-         allow_headers=["Content-Type"],
-         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
-
+    CORS(app,
+         resources={
+             r"/api/*": {"origins": ["http://localhost:5173", "http://localhost:5174", "http://localhost:8081"]}},
+         supports_credentials=True)
     # Import models so Flask-Migrate sees them
     from . import models
     
