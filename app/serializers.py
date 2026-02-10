@@ -1,3 +1,4 @@
+from typing import cast, Dict, Any  # <--- 1. ADD THIS IMPORT
 from .extensions import ma
 from .models import User, Language, Category, Cheat
 from marshmallow import fields
@@ -46,7 +47,7 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
         exclude = ('_password_hash',)
 
     def get_categories_with_cheats(self, user):
-        print(f"DEBUG: Method called, user has {len(user.cheats)} cheats")
+        # print(f"DEBUG: Method called, user has {len(user.cheats)} cheats")
         category_map = {}
         
         for cheat in user.cheats:
@@ -54,7 +55,10 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
             category_id = category.id
             
             if category_id not in category_map:
-                category_data = category_schema.dump(category)
+                # FIX: Use cast to tell Pylance "This is definitely a Dict, not a List"
+                raw_data = category_schema.dump(category)
+                category_data = cast(Dict[str, Any], raw_data)
+                
                 category_data['Cheats'] = []
                 category_map[category_id] = category_data
             
@@ -64,7 +68,7 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
         return list(category_map.values())
     
     def get_languages_with_cheats(self, user):
-        print(f"DEBUG: Method called, user has {len(user.cheats)} cheats")
+        # print(f"DEBUG: Method called, user has {len(user.cheats)} cheats")
         language_map = {}
         
         for cheat in user.cheats:
@@ -72,7 +76,10 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
             language_id = language.id
             
             if language_id not in language_map:
-                language_data = language_schema.dump(language)
+                # FIX: Same cast here
+                raw_data = language_schema.dump(language)
+                language_data = cast(Dict[str, Any], raw_data)
+                
                 language_data['Cheats'] = []
                 language_map[language_id] = language_data
             
@@ -83,5 +90,3 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
-
-
